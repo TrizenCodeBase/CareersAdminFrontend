@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "dockerfilePath": "./Dockerfile",
+  "buildArguments": {
+    "NODE_ENV": "production",
+    "VITE_API_BASE_URL": "{{VITE_API_BASE_URL}}"
+  },
+  "healthCheckPath": "/health",
+  "healthCheckInterval": 30000,
+  "healthCheckTimeout": 5000,
+  "healthCheckRetries": 3,
+  "exposeAsWebApp": true,
+  "httpPort": 80,
+  "containerHttpPort": 80,
+  "notExposeAsWebApp": false,
+  "websocketSupport": false,
+  "volumes": [],
+  "ports": [],
+  "environmentVariables": [
+    {
+      "key": "NODE_ENV",
+      "value": "production"
+    },
+    {
+      "key": "VITE_API_BASE_URL",
+      "value": "{{VITE_API_BASE_URL}}"
+    }
+  ]
+}
+
