@@ -106,7 +106,8 @@ export default function Applications() {
     );
   };
 
-  const getJobTitle = (jobId: string) => {
+  const getJobTitle = (jobId?: string) => {
+    if (!jobId) return 'N/A';
     const jobMap: Record<string, string> = {
       'TV-AIML-INT-2025-001': 'AIML Intern',
       'TV-WEB-MERN-2025-005': 'MERN Stack Developer Intern',
