@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Application {
@@ -45,10 +45,21 @@ export default function Applications() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [jobIdFilter, setJobIdFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset to first page when search changes
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     if (!isAuthenticated || !isAdmin) {
@@ -57,7 +68,7 @@ export default function Applications() {
     }
 
     fetchApplications();
-  }, [isAuthenticated, isAdmin, navigate, page, statusFilter, jobIdFilter, search]);
+  }, [isAuthenticated, isAdmin, navigate, page, statusFilter, jobIdFilter, debouncedSearch]);
 
   const fetchApplications = async () => {
     setLoading(true);
@@ -67,24 +78,37 @@ export default function Applications() {
         limit: '20',
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(jobIdFilter !== 'all' && { jobId: jobIdFilter }),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
       });
 
-      const response = await fetch(`${API_CONFIG.ENDPOINTS.APPLICATIONS}?${params}`, {
+      const url = `${API_CONFIG.ENDPOINTS.APPLICATIONS}?${params}`;
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch applications');
+        const errorText = await response.text();
+        console.error('Response error:', response.status, errorText);
+        throw new Error(`Failed to fetch applications: ${response.status}`);
       }
 
       const data = await response.json();
-      setApplications(data.data || []);
-      setTotalPages(data.pagination?.totalPages || 1);
+      
+      if (data.success && data.data) {
+        setApplications(data.data);
+        setTotalPages(data.pagination?.totalPages || 1);
+      } else {
+        console.warn('Unexpected response format:', data);
+        setApplications([]);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('Error fetching applications:', error);
+      setApplications([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -139,7 +163,6 @@ export default function Applications() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setPage(1);
               }}
               className="pl-10"
             />
@@ -178,6 +201,67 @@ export default function Applications() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Active Filters Display */}
+      {(jobIdFilter !== 'all' || statusFilter !== 'all' || debouncedSearch) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-gray-600 font-medium">Active filters:</span>
+          {jobIdFilter !== 'all' && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              Role: {getJobTitle(jobIdFilter)}
+              <button
+                onClick={() => {
+                  setJobIdFilter('all');
+                  setPage(1);
+                }}
+                className="ml-1 hover:text-red-600 transition-colors"
+                aria-label="Remove role filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {statusFilter !== 'all' && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+              <button
+                onClick={() => {
+                  setStatusFilter('all');
+                  setPage(1);
+                }}
+                className="ml-1 hover:text-red-600 transition-colors"
+                aria-label="Remove status filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {debouncedSearch && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              Search: {debouncedSearch}
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setDebouncedSearch('');
+                  setPage(1);
+                }}
+                className="ml-1 hover:text-red-600 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+        </div>
+      )}
+
+      {/* Results Count */}
+      {!loading && applications.length > 0 && (
+        <div className="text-sm text-gray-600">
+          Showing {applications.length} application{applications.length !== 1 ? 's' : ''}
+          {totalPages > 1 && ` (Page ${page} of ${totalPages})`}
+        </div>
+      )}
 
       {/* Applications Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">

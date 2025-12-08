@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, FileText, User } from 'lucide-react';
+import { LogOut, LayoutDashboard, FileText, User, Mail } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -55,6 +55,18 @@ export default function Layout({ children }: LayoutProps) {
             <FileText className="h-5 w-5" />
             <span>Applications</span>
           </Link>
+          
+          <Link
+            to="/email-notifications"
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
+              location.pathname === '/email-notifications'
+                ? 'bg-brand-primary text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Mail className="h-5 w-5" />
+            <span>Email Notifications</span>
+          </Link>
         </nav>
       </aside>
 
@@ -67,6 +79,7 @@ export default function Layout({ children }: LayoutProps) {
               {location.pathname === '/dashboard' && 'Dashboard'}
               {location.pathname === '/applications' && 'All Applications'}
               {location.pathname.startsWith('/applications/') && 'Application Details'}
+              {location.pathname === '/email-notifications' && 'Email Notifications'}
             </h2>
             
             <div className="flex items-center gap-4">

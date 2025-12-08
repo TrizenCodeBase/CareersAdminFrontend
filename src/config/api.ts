@@ -1,5 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://trizencareersbackend.llp.trizenventures.com';
 
+// Email Service Configuration
+const EMAIL_SERVICE_BASE_URL = import.meta.env.VITE_EMAIL_SERVICE_URL || 'https://trizensupportemailservice.llp.trizenventures.com';
+const EMAIL_SERVICE_API_KEY = import.meta.env.VITE_EMAIL_SERVICE_API_KEY || 'trizen-support-email-2024-secure-key-xyz789';
+
 export const API_CONFIG = {
   BASE_URL: API_BASE_URL,
   ENDPOINTS: {
@@ -9,6 +13,17 @@ export const API_CONFIG = {
       LOGIN: `${API_BASE_URL}/api/v1/users/login`,
       PROFILE: `${API_BASE_URL}/api/v1/users/profile`,
     },
+  },
+  // Email Service Configuration
+  EMAIL_SERVICE: {
+    BASE_URL: EMAIL_SERVICE_BASE_URL,
+    API_KEY: EMAIL_SERVICE_API_KEY,
+    ENDPOINTS: {
+      SEND_ACCEPTANCE: `${EMAIL_SERVICE_BASE_URL}/api/support/send-application-acceptance`,
+      SEND_REJECTION: `${EMAIL_SERVICE_BASE_URL}/api/support/send-application-rejection`,
+      TEST_CONFIG: `${EMAIL_SERVICE_BASE_URL}/api/support/test-config`,
+      STATUS: `${EMAIL_SERVICE_BASE_URL}/api/support/status`,
+    }
   },
 };
 
