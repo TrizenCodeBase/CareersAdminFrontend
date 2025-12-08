@@ -1,7 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://trizencareersbackend.llp.trizenventures.com';
 
 // Email Service Configuration
-const EMAIL_SERVICE_BASE_URL = import.meta.env.VITE_EMAIL_SERVICE_URL || 'http://localhost:3002';
+const EMAIL_SERVICE_BASE_URL = import.meta.env.VITE_EMAIL_SERVICE_URL || 'https://trizensupportemailservice.llp.trizenventures.com';
 const EMAIL_SERVICE_API_KEY = import.meta.env.VITE_EMAIL_SERVICE_API_KEY || 'trizen-support-email-2024-secure-key-xyz789';
 
 export const API_CONFIG = {
