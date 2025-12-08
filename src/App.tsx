@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Applications from './pages/Applications';
 import ApplicationDetail from './pages/ApplicationDetail';
+import EmailNotifications from './pages/EmailNotifications';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -49,6 +50,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ApplicationDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/email-notifications"
+        element={
+          <ProtectedRoute>
+            <EmailNotifications />
           </ProtectedRoute>
         }
       />
