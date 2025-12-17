@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Applications from './pages/Applications';
 import ApplicationDetail from './pages/ApplicationDetail';
 import EmailNotifications from './pages/EmailNotifications';
+import BulkEmailUpload from './pages/BulkEmailUpload';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -58,6 +59,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <EmailNotifications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bulk-email-upload"
+        element={
+          <ProtectedRoute>
+            <BulkEmailUpload />
           </ProtectedRoute>
         }
       />

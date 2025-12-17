@@ -40,7 +40,7 @@ interface Application {
 }
 
 export default function Applications() {
-  const { token, isAuthenticated, isAdmin } = useAuth();
+  const { token, isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +89,13 @@ export default function Applications() {
         },
       });
 
+      if (response.status === 401) {
+        // Token expired or invalid - logout and redirect to login
+        logout();
+        navigate('/login');
+        return;
+      }
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Response error:', response.status, errorText);
@@ -99,7 +106,7 @@ export default function Applications() {
       
       if (data.success && data.data) {
         setApplications(data.data);
-        setTotalPages(data.pagination?.totalPages || 1);
+      setTotalPages(data.pagination?.totalPages || 1);
       } else {
         console.warn('Unexpected response format:', data);
         setApplications([]);

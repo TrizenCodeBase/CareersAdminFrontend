@@ -26,7 +26,7 @@ interface Application {
 }
 
 export default function EmailNotifications() {
-  const { token, isAuthenticated, isAdmin } = useAuth();
+  const { token, isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +60,13 @@ export default function EmailNotifications() {
           'Authorization': `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        // Token expired or invalid - logout and redirect to login
+        logout();
+        navigate('/login');
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to fetch applications: ${response.status}`);
@@ -98,6 +105,13 @@ export default function EmailNotifications() {
           'Content-Type': 'application/json',
         },
       });
+
+      if (response.status === 401) {
+        // Token expired or invalid - logout and redirect to login
+        logout();
+        navigate('/login');
+        return;
+      }
 
       const data = await response.json();
 
