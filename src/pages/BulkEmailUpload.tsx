@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Upload, Download, Eye, FileText } from 'lucide-react';
+import { Mail, Upload, Download, FileText, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,77 +13,16 @@ type UploadRow = {
   email: string;
 };
 
-const DEFAULT_EMAIL_TEMPLATE = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f4f4; padding: 20px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #362c86; text-align: center; padding: 20px 0;">
-              <img
-                src="https://drive.google.com/uc?export=view&id=141p2D4bNG15jd3S9ja7EdFgBANngvcW4"
-                alt="Trizen Logo"
-                style="max-width: 400px; height: auto; max-height: 150px; display: block; margin: 0 auto;"
-              />
-            </td>
-          </tr> 
-          
-          <!-- Content -->
-          <tr>
-            <td style="padding: 40px 30px;">
-              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                Dear Student,
-              </p>
-              
-              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                Your final year project is a key academic milestone and should demonstrate clear understanding, implementation, and research quality.
-              </p>
-              
-              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
-                At <strong>Trizen Academy</strong>, we train B.Tech and M.Tech students to complete their final year projects end-to-end.
-              </p>
-              
-              <div style="background-color: #f8f9fa; border-left: 4px solid #362c86; padding: 20px; margin: 0 0 25px 0; border-radius: 4px;">
-                <h2 style="color: #362c86; font-size: 18px; margin: 0 0 15px 0; font-weight: bold;">
-                  End-to-End Deliverables Include:
-                </h2>
-                <ol style="color: #333333; font-size: 15px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                  <li>Finalized industry-relevant problem statement</li>
-                  <li>Complete working project code using updated technologies</li>
-                  <li>System architecture, flowcharts, and diagrams</li>
-                  <li>PPT, documentation, and final reports</li>
-                  <li>Live demo preparation and explanation</li>
-                  <li>Research paper drafting (IEEE/Scopus standards)</li>
-                </ol>
-              </div>
-              
-              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
-                <strong>Domains:</strong> CSE, AIML, AI, Blockchain, IoT, ECE, VLSI, Embedded Systems, and more.
-              </p>
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #362c86; padding: 25px; text-align: center; color: #ffffff;">
-              <p style="margin: 8px 0; font-size: 16px;">📞 <strong>8639648822, 8247422730</strong></p>
-              <p style="margin: 8px 0; font-size: 16px;">🌐 <strong>academy.trizenventures.com</strong></p>
-              <p style="margin: 8px 0; font-size: 14px;">📍 Visakhapatnam, Hyderabad</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+const DEFAULT_EMAIL_BODY = `Hello,
+
+We wanted to share an update with you. Please find the details below.
+
+- Bullet point 1
+- Bullet point 2
+- Bullet point 3
+
+Thanks,
+Trizen Team`;
 
 export default function BulkEmailUpload() {
   const { token, isAuthenticated, isAdmin, logout } = useAuth();
@@ -95,10 +34,12 @@ export default function BulkEmailUpload() {
   const [sendSummary, setSendSummary] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
   
   // Template and attachments
-  const [emailSubject, setEmailSubject] = useState('Final Year Project & Research Training – End-to-End Deliverables');
-  const [emailTemplate, setEmailTemplate] = useState(DEFAULT_EMAIL_TEMPLATE);
+  const [emailSubject, setEmailSubject] = useState('Trizen Update');
+  const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [showPreview, setShowPreview] = useState(false);
+  const [headerLogo, setHeaderLogo] = useState<File | null>(null);
+  const [headerLogoUrl, setHeaderLogoUrl] = useState<string>('');
+  const [useHeaderLogoUrl, setUseHeaderLogoUrl] = useState<boolean>(false);
 
   const handleFile = async (file: File) => {
     setUploadError(null);
@@ -155,6 +96,23 @@ export default function BulkEmailUpload() {
           contentType: file.type
         }))
       );
+      
+      // Add header logo - either as URL or base64 file
+      if (useHeaderLogoUrl && headerLogoUrl.trim()) {
+        // Use URL for header logo (best for Gmail compatibility)
+        attachmentData.unshift({
+          filename: 'header-logo.png', // Required for detection, but won't be used as attachment
+          url: headerLogoUrl.trim(),
+          contentType: 'image/jpeg' // Default, can be detected from URL
+        });
+      } else if (headerLogo) {
+        // Use uploaded file (base64)
+        attachmentData.unshift({
+          filename: headerLogo.name,
+          content: (await fileToBase64(headerLogo)).split(',')[1],
+          contentType: headerLogo.type || 'image/png',
+        });
+      }
     } catch (err) {
       setUploadError('Failed to process attachments');
       setSending(false);
@@ -169,8 +127,8 @@ export default function BulkEmailUpload() {
         clientEmail: row.email,
         clientName: 'Student',
         subject: emailSubject,
-        message: emailTemplate,
-        isHtml: true,
+        message: emailBody,
+        isHtml: false,
         attachments: attachmentData
       };
 
@@ -235,12 +193,12 @@ export default function BulkEmailUpload() {
         <p className="text-gray-600 mt-1">Create custom email campaigns with templates and attachments</p>
       </div>
 
-      {/* Email Template Editor */}
+      {/* Email Content */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Email Template & Content
+            Email Content
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -252,24 +210,114 @@ export default function BulkEmailUpload() {
               type="text"
               value={emailSubject}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailSubject(e.target.value)}
-              placeholder="Enter email subject"
+              placeholder="Enter email subject line"
               className="w-full"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Template (HTML)
+              Header Logo (optional)
+            </label>
+            
+            {/* Toggle between URL and file upload */}
+            <div className="flex items-center gap-3 mb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setUseHeaderLogoUrl(false);
+                  setHeaderLogoUrl('');
+                }}
+                className={`px-3 py-1 text-sm rounded-md border ${
+                  !useHeaderLogoUrl
+                    ? 'bg-blue-50 border-blue-300 text-blue-700'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Upload File
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUseHeaderLogoUrl(true);
+                  setHeaderLogo(null);
+                }}
+                className={`px-3 py-1 text-sm rounded-md border ${
+                  useHeaderLogoUrl
+                    ? 'bg-blue-50 border-blue-300 text-blue-700'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Use URL
+              </button>
+            </div>
+
+            {useHeaderLogoUrl ? (
+              <div className="space-y-2">
+                <Input
+                  type="url"
+                  value={headerLogoUrl}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHeaderLogoUrl(e.target.value)}
+                  placeholder="https://logo.llp.trizenventures.com/logo.jpg"
+                  className="w-full"
+                />
+                {headerLogoUrl && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded-md border">
+                    <img
+                      src={headerLogoUrl}
+                      alt="Header logo preview"
+                      className="max-w-full h-auto max-h-32 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  Enter the full URL to your header logo image. Recommended for Gmail compatibility.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-gray-50">
+                  <ImageIcon className="h-4 w-4" />
+                  <span>{headerLogo ? headerLogo.name : 'Choose image file'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setHeaderLogo(e.target.files?.[0] || null)}
+                  />
+                </label>
+                {headerLogo && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded-md border">
+                    <img
+                      src={URL.createObjectURL(headerLogo)}
+                      alt="Header logo preview"
+                      className="max-w-full h-auto max-h-32 object-contain"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Upload an image file. For best Gmail compatibility, use URL instead.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email Body (plain text)
             </label>
             <Textarea
-              value={emailTemplate}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEmailTemplate(e.target.value)}
-              placeholder="Enter HTML email template"
+              value={emailBody}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEmailBody(e.target.value)}
+              placeholder="Write the email body in plain text"
               rows={12}
               className="w-full font-mono text-sm"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Customize the HTML template above. Default template includes Trizen branding.
+              Plain text only. Add links as full URLs (e.g., https://example.com).
             </p>
           </div>
 
@@ -300,32 +348,17 @@ export default function BulkEmailUpload() {
           <div className="flex gap-3">
             <Button
               variant="outline"
-              onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              {showPreview ? 'Hide' : 'Show'} Preview
-            </Button>
-            <Button
-              variant="outline"
               onClick={() => {
-                setEmailTemplate(DEFAULT_EMAIL_TEMPLATE);
-                setEmailSubject('Final Year Project & Research Training – End-to-End Deliverables');
+                setEmailBody(DEFAULT_EMAIL_BODY);
+                setEmailSubject('Trizen Update');
+                setHeaderLogo(null);
+                setHeaderLogoUrl('');
+                setUseHeaderLogoUrl(false);
               }}
             >
               Reset to Default
             </Button>
           </div>
-
-          {showPreview && (
-            <div className="border rounded-md p-4 bg-gray-50">
-              <p className="text-sm font-medium text-gray-700 mb-2">Email Preview:</p>
-              <div 
-                className="bg-white border rounded p-4 max-h-96 overflow-auto"
-                dangerouslySetInnerHTML={{ __html: emailTemplate }}
-              />
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -454,9 +487,8 @@ export default function BulkEmailUpload() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-gray-600">
           <ol className="list-decimal pl-5 space-y-2">
-            <li><strong>Customize your email:</strong> Edit the subject line and HTML template (or use the default Trizen Academy template)</li>
+            <li><strong>Customize your email:</strong> Set the subject line, add a plain-text body, and optionally attach a header logo image</li>
             <li><strong>Add attachments:</strong> Upload images, PDFs, or documents that will be sent with every email</li>
-            <li><strong>Preview:</strong> Click "Show Preview" to see how your email will look</li>
             <li><strong>Prepare recipient list:</strong> Download the template Excel file</li>
             <li><strong>Fill recipients:</strong> Add one email address per row in the <span className="font-medium">email</span> column</li>
             <li><strong>Upload:</strong> Upload the completed Excel file</li>

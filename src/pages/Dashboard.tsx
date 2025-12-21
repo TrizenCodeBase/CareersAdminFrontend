@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Stats {
@@ -172,84 +173,17 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      <Card id={uploadSectionId}>
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Upload Excel for Emails
-          </CardTitle>
-          <p className="text-sm text-gray-600">
-            Columns accepted: email (required), name, status (accepted/rejected), jobTitle, jobId
-          </p>
+          <CardTitle>Bulk Email Upload</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer hover:bg-gray-50">
-              <Upload className="h-4 w-4" />
-              <span>Choose file (.xlsx or .csv)</span>
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFile(file);
-                }}
-              />
-            </label>
-            <Button onClick={handleSendAll} disabled={!rows.length || uploading}>
-              {uploading
-                ? 'Parsing...'
-                : sending
-                  ? 'Sending...'
-                  : rows.length
-                    ? `Send ${rows.length} emails`
-                    : 'Send Emails'}
-            </Button>
-            <Button variant="outline" onClick={handleDownloadTemplate}>
-              Download Template
-            </Button>
-          </div>
-
-          {uploadError && (
-            <div className="text-sm text-red-600">{uploadError}</div>
-          )}
-
-          {sendSummary && (
-            <div className="text-sm space-y-1">
-              <div className="text-green-600">Sent: {sendSummary.success}</div>
-              <div className="text-red-600">Failed: {sendSummary.failed}</div>
-              {sendSummary.errors.length > 0 && (
-                <details className="text-red-600">
-                  <summary className="cursor-pointer">View errors</summary>
-                  <ul className="list-disc pl-5">
-                    {sendSummary.errors.map((e, i) => (
-                      <li key={i}>{e}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </div>
-          )}
-
-          {rows.length > 0 && (
-            <div className="border rounded-md p-3">
-              <div className="text-sm text-gray-700 mb-2">
-                Preview (first 10 of {rows.length})
-              </div>
-              <div className="space-y-2 text-sm">
-                {rows.slice(0, 10).map((r, idx) => (
-                  <div key={idx} className="flex flex-wrap gap-3 border-b pb-2">
-                    <span className="font-medium">{r.email}</span>
-                    {r.name && <span>Name: {r.name}</span>}
-                    {r.status && <span>Status: {r.status}</span>}
-                    {r.jobTitle && <span>Job: {r.jobTitle}</span>}
-                    {r.jobId && <span>ID: {r.jobId}</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-700">
+            Need to send emails from an Excel/CSV list? Use the dedicated bulk upload tool.
+          </p>
+          <Button onClick={() => navigate('/bulk-email-upload')}>
+            Go to Bulk Email Upload
+          </Button>
         </CardContent>
       </Card>
     </div>
