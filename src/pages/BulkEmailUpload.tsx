@@ -1,13 +1,21 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { API_CONFIG } from '@/config/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Upload, Download, FileText, Image as ImageIcon } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import * as XLSX from 'xlsx';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { API_CONFIG } from "@/config/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Mail,
+  Upload,
+  Download,
+  FileText,
+  Image as ImageIcon,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import * as XLSX from "xlsx";
 
 type UploadRow = {
   email: string;
@@ -31,15 +39,51 @@ export default function BulkEmailUpload() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [rows, setRows] = useState<UploadRow[]>([]);
   const [sending, setSending] = useState(false);
-  const [sendSummary, setSendSummary] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
-  
+  const [sendSummary, setSendSummary] = useState<{
+    success: number;
+    failed: number;
+    errors: string[];
+  } | null>(null);
+
   // Template and attachments
-  const [emailSubject, setEmailSubject] = useState('Trizen Update');
+  const [selectedDomain, setSelectedDomain] = useState("AI & Machine Learning");
+  const [emailSubject, setEmailSubject] = useState("Trizen Update");
   const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
+  
+  const domains = [
+    'AI & Machine Learning',
+    'IoT & Embedded Systems',
+    'Cloud Computing',
+    'Web & Mobile Applications',
+    'Cybersecurity & Blockchain',
+    'Data Science & Analytics',
+    'Networking & Communication',
+    'Mechanical / ECE Projects'
+  ];
+  
+  // Generate email template with domain selection link
+  const generateEmailTemplate = () => {
+    const link = `https://academy.projects.trizenventures.com/projects`;
+    
+    return `Hi,
+
+Get your FREE PDF with 20+ project ideas! 🚀
+
+Select your domain and fill the form:
+${link}
+
+Start building your final year project today!
+
+Best regards,
+Trizen Academy`;
+  };
   const [attachments, setAttachments] = useState<File[]>([]);
   const [headerLogo, setHeaderLogo] = useState<File | null>(null);
-  const [headerLogoUrl, setHeaderLogoUrl] = useState<string>('');
+  const [headerLogoUrl, setHeaderLogoUrl] = useState<string>("");
   const [useHeaderLogoUrl, setUseHeaderLogoUrl] = useState<boolean>(false);
+
+  // Attachment URLs (for large files hosted elsewhere)
+  const [attachmentUrls, setAttachmentUrls] = useState<string>("");
 
   const handleFile = async (file: File) => {
     setUploadError(null);
@@ -47,22 +91,22 @@ export default function BulkEmailUpload() {
     setUploading(true);
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
+      const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json: UploadRow[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const json: UploadRow[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
       const normalized = json
         .map((r) => ({
-          email: (r.email || (r as any).Email || '').trim(),
+          email: (r.email || (r as any).Email || "").trim(),
         }))
         .filter((r) => r.email);
 
       if (normalized.length === 0) {
-        setUploadError('No valid email addresses found in the file');
+        setUploadError("No valid email addresses found in the file");
       } else {
         setRows(normalized);
       }
     } catch (err: any) {
-      setUploadError(err?.message || 'Failed to parse file');
+      setUploadError(err?.message || "Failed to parse file");
     } finally {
       setUploading(false);
     }
@@ -74,7 +118,7 @@ export default function BulkEmailUpload() {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
+      reader.onerror = (error) => reject(error);
     });
   };
 
@@ -92,29 +136,57 @@ export default function BulkEmailUpload() {
       attachmentData = await Promise.all(
         attachments.map(async (file) => ({
           filename: file.name,
-          content: (await fileToBase64(file)).split(',')[1], // Remove data:mime;base64, prefix
-          contentType: file.type
+          content: (await fileToBase64(file)).split(",")[1], // Remove data:mime;base64, prefix
+          contentType: file.type,
         }))
       );
-      
+
       // Add header logo - either as URL or base64 file
       if (useHeaderLogoUrl && headerLogoUrl.trim()) {
         // Use URL for header logo (best for Gmail compatibility)
         attachmentData.unshift({
-          filename: 'header-logo.png', // Required for detection, but won't be used as attachment
+          filename: "header-logo.png", // Required for detection, but won't be used as attachment
           url: headerLogoUrl.trim(),
-          contentType: 'image/jpeg' // Default, can be detected from URL
+          contentType: "image/jpeg", // Default, can be detected from URL
         });
       } else if (headerLogo) {
         // Use uploaded file (base64)
         attachmentData.unshift({
-          filename: headerLogo.name,
-          content: (await fileToBase64(headerLogo)).split(',')[1],
-          contentType: headerLogo.type || 'image/png',
+          filename: "header-logo.png", // Fixed: Always use this name for proper header detection
+          content: (await fileToBase64(headerLogo)).split(",")[1],
+          contentType: headerLogo.type || "image/png",
+        });
+      }
+
+      // Add URL-based attachments (for large files)
+      if (attachmentUrls.trim()) {
+        const urls = attachmentUrls
+          .split("\n")
+          .map((url) => url.trim())
+          .filter((url) => url.length > 0 && url.startsWith("http"));
+
+        urls.forEach((url) => {
+          const filename = url.split("/").pop() || "attachment";
+          const ext = filename.split(".").pop()?.toLowerCase() || "";
+          let contentType = "application/octet-stream";
+
+          // Detect content type from extension
+          if (["jpg", "jpeg"].includes(ext)) contentType = "image/jpeg";
+          else if (ext === "png") contentType = "image/png";
+          else if (ext === "gif") contentType = "image/gif";
+          else if (ext === "pdf") contentType = "application/pdf";
+          else if (["doc", "docx"].includes(ext))
+            contentType = "application/msword";
+
+          attachmentData.push({
+            filename,
+            url,
+            contentType,
+          });
         });
       }
     } catch (err) {
-      setUploadError('Failed to process attachments');
+      setUploadError("Failed to process attachments");
       setSending(false);
       return;
     }
@@ -125,26 +197,26 @@ export default function BulkEmailUpload() {
 
       const body = {
         clientEmail: row.email,
-        clientName: 'Student',
+        clientName: "Student",
         subject: emailSubject,
         message: emailBody,
         isHtml: false,
-        attachments: attachmentData
+        attachments: attachmentData,
       };
 
       const res = await fetch(endpoint, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': API_CONFIG.EMAIL_SERVICE.API_KEY,
+          "Content-Type": "application/json",
+          "X-API-Key": API_CONFIG.EMAIL_SERVICE.API_KEY,
         },
         body: JSON.stringify(body),
       });
 
       if (res.status === 401) {
         logout();
-        navigate('/login');
-        throw new Error('Session expired');
+        navigate("/login");
+        throw new Error("Session expired");
       }
 
       if (!res.ok) {
@@ -153,7 +225,7 @@ export default function BulkEmailUpload() {
       }
       const data = await res.json();
       if (!data.success) {
-        throw new Error(data.error || 'Unknown error');
+        throw new Error(data.error || "Unknown error");
       }
     };
 
@@ -176,21 +248,23 @@ export default function BulkEmailUpload() {
 
   const handleDownloadTemplate = () => {
     const sample = [
-      { email: 'jane.doe@example.com' },
-      { email: 'john.smith@example.com' },
-      { email: 'candidate@example.com' },
+      { email: "jane.doe@example.com" },
+      { email: "john.smith@example.com" },
+      { email: "candidate@example.com" },
     ];
     const sheet = XLSX.utils.json_to_sheet(sample);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, sheet, 'Emails');
-    XLSX.writeFile(workbook, 'email-upload-template.xlsx');
+    XLSX.utils.book_append_sheet(workbook, sheet, "Emails");
+    XLSX.writeFile(workbook, "email-upload-template.xlsx");
   };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Bulk Email Upload</h1>
-        <p className="text-gray-600 mt-1">Create custom email campaigns with templates and attachments</p>
+        <p className="text-gray-600 mt-1">
+          Create custom email campaigns with templates and attachments
+        </p>
       </div>
 
       {/* Email Content */}
@@ -203,13 +277,45 @@ export default function BulkEmailUpload() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Domain (for Project Funnel)
+            </Label>
+            <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a domain" />
+              </SelectTrigger>
+              <SelectContent>
+                {domains.map((domain) => (
+                  <SelectItem key={domain} value={domain}>
+                    {domain}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              The email will include a link to the selected domain's project page.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => setEmailBody(generateEmailTemplate())}
+            >
+              Generate Email Template with Domain Link
+            </Button>
+          </div>
+          
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email Subject
             </label>
             <Input
               type="text"
               value={emailSubject}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailSubject(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setEmailSubject(e.target.value)
+              }
               placeholder="Enter email subject line"
               className="w-full"
             />
@@ -219,19 +325,19 @@ export default function BulkEmailUpload() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Header Logo (optional)
             </label>
-            
+
             {/* Toggle between URL and file upload */}
             <div className="flex items-center gap-3 mb-3">
               <button
                 type="button"
                 onClick={() => {
                   setUseHeaderLogoUrl(false);
-                  setHeaderLogoUrl('');
+                  setHeaderLogoUrl("");
                 }}
                 className={`px-3 py-1 text-sm rounded-md border ${
                   !useHeaderLogoUrl
-                    ? 'bg-blue-50 border-blue-300 text-blue-700'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? "bg-blue-50 border-blue-300 text-blue-700"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Upload File
@@ -244,8 +350,8 @@ export default function BulkEmailUpload() {
                 }}
                 className={`px-3 py-1 text-sm rounded-md border ${
                   useHeaderLogoUrl
-                    ? 'bg-blue-50 border-blue-300 text-blue-700'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? "bg-blue-50 border-blue-300 text-blue-700"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Use URL
@@ -257,7 +363,9 @@ export default function BulkEmailUpload() {
                 <Input
                   type="url"
                   value={headerLogoUrl}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHeaderLogoUrl(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setHeaderLogoUrl(e.target.value)
+                  }
                   placeholder="https://logo.llp.trizenventures.com/logo.jpg"
                   className="w-full"
                 />
@@ -268,20 +376,23 @@ export default function BulkEmailUpload() {
                       alt="Header logo preview"
                       className="max-w-full h-auto max-h-32 object-contain"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).style.display = "none";
                       }}
                     />
                   </div>
                 )}
                 <p className="text-xs text-gray-500">
-                  Enter the full URL to your header logo image. Recommended for Gmail compatibility.
+                  Enter the full URL to your header logo image. Recommended for
+                  Gmail compatibility.
                 </p>
               </div>
             ) : (
               <div>
                 <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-gray-50">
                   <ImageIcon className="h-4 w-4" />
-                  <span>{headerLogo ? headerLogo.name : 'Choose image file'}</span>
+                  <span>
+                    {headerLogo ? headerLogo.name : "Choose image file"}
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
@@ -299,7 +410,8 @@ export default function BulkEmailUpload() {
                   </div>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
-                  Upload an image file. For best Gmail compatibility, use URL instead.
+                  Upload an image file. For best Gmail compatibility, use URL
+                  instead.
                 </p>
               </div>
             )}
@@ -311,13 +423,16 @@ export default function BulkEmailUpload() {
             </label>
             <Textarea
               value={emailBody}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEmailBody(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setEmailBody(e.target.value)
+              }
               placeholder="Write the email body in plain text"
               rows={12}
               className="w-full font-mono text-sm"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Plain text only. Add links as full URLs (e.g., https://example.com).
+              Plain text only. Add links as full URLs (e.g.,
+              https://example.com).
             </p>
           </div>
 
@@ -325,23 +440,50 @@ export default function BulkEmailUpload() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Attachments (Images, PDFs, Documents)
             </label>
-            <div className="flex items-center gap-3">
-              <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-gray-50">
-                <Upload className="h-4 w-4" />
-                <span>Choose files</span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,.pdf,.doc,.docx"
-                  onChange={(e) => setAttachments(Array.from(e.target.files || []))}
-                  className="hidden"
+
+            {/* File Upload Option */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-gray-50">
+                  <Upload className="h-4 w-4" />
+                  <span>Upload Files (Small files only)</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={(e) =>
+                      setAttachments(Array.from(e.target.files || []))
+                    }
+                    className="hidden"
+                  />
+                </label>
+                {attachments.length > 0 && (
+                  <div className="text-sm text-gray-600">
+                    {attachments.length} file(s) selected:{" "}
+                    {attachments.map((f) => f.name).join(", ")}
+                  </div>
+                )}
+              </div>
+
+              {/* URL Option for Large Files */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Or paste URLs to hosted files (Recommended for large files)
+                </label>
+                <Textarea
+                  value={attachmentUrls}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setAttachmentUrls(e.target.value)
+                  }
+                  placeholder={`Paste URLs, one per line:\nhttps://example.com/brochure.pdf\nhttps://example.com/syllabus.pdf`}
+                  rows={3}
+                  className="w-full font-mono text-sm"
                 />
-              </label>
-              {attachments.length > 0 && (
-                <div className="text-sm text-gray-600">
-                  {attachments.length} file(s) selected: {attachments.map(f => f.name).join(', ')}
-                </div>
-              )}
+                <p className="text-xs text-gray-500">
+                  💡 For large files (&gt;5MB), upload to your server and paste
+                  URLs here to avoid email size limits.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -350,9 +492,9 @@ export default function BulkEmailUpload() {
               variant="outline"
               onClick={() => {
                 setEmailBody(DEFAULT_EMAIL_BODY);
-                setEmailSubject('Trizen Update');
+                setEmailSubject("Trizen Update");
                 setHeaderLogo(null);
-                setHeaderLogoUrl('');
+                setHeaderLogoUrl("");
                 setUseHeaderLogoUrl(false);
               }}
             >
@@ -377,7 +519,9 @@ export default function BulkEmailUpload() {
           <div className="flex items-center gap-3 flex-wrap">
             <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 hover:border-brand-primary transition-colors">
               <Upload className="h-5 w-5 text-gray-600" />
-              <span className="text-gray-700">Choose file (.xlsx, .xls, .csv)</span>
+              <span className="text-gray-700">
+                Choose file (.xlsx, .xls, .csv)
+              </span>
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
@@ -385,7 +529,7 @@ export default function BulkEmailUpload() {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleFile(file);
-                  e.target.value = ''; // Reset input
+                  e.target.value = ""; // Reset input
                 }}
               />
             </label>
@@ -415,7 +559,8 @@ export default function BulkEmailUpload() {
                       File parsed successfully
                     </p>
                     <p className="text-sm text-gray-600">
-                      {rows.length} email{rows.length !== 1 ? 's' : ''} ready to send
+                      {rows.length} email{rows.length !== 1 ? "s" : ""} ready to
+                      send
                     </p>
                   </div>
                   <Button
@@ -425,8 +570,10 @@ export default function BulkEmailUpload() {
                   >
                     <Mail className="h-4 w-4" />
                     {sending
-                      ? 'Sending...'
-                      : `Send ${rows.length} email${rows.length !== 1 ? 's' : ''}`}
+                      ? "Sending..."
+                      : `Send ${rows.length} email${
+                          rows.length !== 1 ? "s" : ""
+                        }`}
                   </Button>
                 </div>
               </div>
@@ -442,7 +589,9 @@ export default function BulkEmailUpload() {
                     <div key={idx} className="px-4 py-3 hover:bg-gray-50">
                       <div className="flex items-center gap-2 text-sm">
                         <Mail className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">{r.email}</span>
+                        <span className="font-medium text-gray-900">
+                          {r.email}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -456,11 +605,15 @@ export default function BulkEmailUpload() {
               <p className="font-medium text-gray-900">Send Summary</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-green-50 rounded-md">
-                  <p className="text-2xl font-bold text-green-600">{sendSummary.success}</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {sendSummary.success}
+                  </p>
                   <p className="text-sm text-green-700">Successfully sent</p>
                 </div>
                 <div className="p-3 bg-red-50 rounded-md">
-                  <p className="text-2xl font-bold text-red-600">{sendSummary.failed}</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {sendSummary.failed}
+                  </p>
                   <p className="text-sm text-red-700">Failed</p>
                 </div>
               </div>
@@ -487,12 +640,29 @@ export default function BulkEmailUpload() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-gray-600">
           <ol className="list-decimal pl-5 space-y-2">
-            <li><strong>Customize your email:</strong> Set the subject line, add a plain-text body, and optionally attach a header logo image</li>
-            <li><strong>Add attachments:</strong> Upload images, PDFs, or documents that will be sent with every email</li>
-            <li><strong>Prepare recipient list:</strong> Download the template Excel file</li>
-            <li><strong>Fill recipients:</strong> Add one email address per row in the <span className="font-medium">email</span> column</li>
-            <li><strong>Upload:</strong> Upload the completed Excel file</li>
-            <li><strong>Send:</strong> Review the recipient list and click "Send" to dispatch emails</li>
+            <li>
+              <strong>Customize your email:</strong> Set the subject line, add a
+              plain-text body, and optionally attach a header logo image
+            </li>
+            <li>
+              <strong>Add attachments:</strong> Upload images, PDFs, or
+              documents that will be sent with every email
+            </li>
+            <li>
+              <strong>Prepare recipient list:</strong> Download the template
+              Excel file
+            </li>
+            <li>
+              <strong>Fill recipients:</strong> Add one email address per row in
+              the <span className="font-medium">email</span> column
+            </li>
+            <li>
+              <strong>Upload:</strong> Upload the completed Excel file
+            </li>
+            <li>
+              <strong>Send:</strong> Review the recipient list and click "Send"
+              to dispatch emails
+            </li>
           </ol>
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm font-medium text-blue-800">✨ Features:</p>
@@ -507,7 +677,9 @@ export default function BulkEmailUpload() {
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-sm font-medium text-yellow-800">⚠️ Important:</p>
             <p className="text-sm text-yellow-700 mt-1">
-              All recipients will receive the same email with the same attachments. Make sure your content and recipient list are correct before sending.
+              All recipients will receive the same email with the same
+              attachments. Make sure your content and recipient list are correct
+              before sending.
             </p>
           </div>
         </CardContent>
@@ -515,4 +687,3 @@ export default function BulkEmailUpload() {
     </div>
   );
 }
-
