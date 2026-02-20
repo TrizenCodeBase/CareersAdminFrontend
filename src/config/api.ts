@@ -1,5 +1,8 @@
-// Default to local backend in dev; override via VITE_API_BASE_URL for prod/staging
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+// API URL from env. In production, VITE_API_BASE_URL must be set at build time (e.g. in CapRover env).
+// In dev, fall back to localhost if unset.
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? 'http://localhost:5000' : '');
 
 // Email Service Configuration
 // Default to local email service in dev; override via VITE_EMAIL_SERVICE_URL for prod/staging

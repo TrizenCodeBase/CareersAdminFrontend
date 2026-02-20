@@ -1,7 +1,7 @@
 // Environment Configuration
 export const ENV_CONFIG = {
-  // API Base URL - defaults to production, can be overridden by environment variable
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  // API Base URL from env. In production set VITE_API_BASE_URL at build time.
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:5000' : ''),
 
   // Email Service Configuration
   EMAIL_SERVICE: {
