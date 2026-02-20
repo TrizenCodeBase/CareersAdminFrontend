@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save } from 'lucide-react';
 import { format } from 'date-fns';
-import { downloadFile } from '@/lib/utils';
+import { downloadFile, getResumeDownloadUrl } from '@/lib/utils';
 
 interface Application {
   _id: string;
@@ -304,7 +304,7 @@ export default function ApplicationDetail() {
                     <p className="mt-1">
                       <button
                         type="button"
-                        onClick={() => downloadFile(application.resumeLink!, `resume-${application._id}.pdf`)}
+                        onClick={() => downloadFile(getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY), `resume-${application._id}.pdf`)}
                         className="text-blue-600 hover:underline bg-transparent border-0 p-0 cursor-pointer font-inherit text-left"
                       >
                         Download resume
@@ -401,7 +401,7 @@ export default function ApplicationDetail() {
                   <p className="mt-1">
                     <button
                       type="button"
-                      onClick={() => downloadFile(application.resumeLink!, `resume-${application._id}.pdf`)}
+                      onClick={() => downloadFile(getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY), `resume-${application._id}.pdf`)}
                       className="text-blue-600 hover:underline bg-transparent border-0 p-0 cursor-pointer font-inherit text-left"
                     >
                       Download resume

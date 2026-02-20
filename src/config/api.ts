@@ -14,6 +14,7 @@ export const API_CONFIG = {
   ENDPOINTS: {
     HEALTH: `${API_BASE_URL}/api/health`,
     APPLICATIONS: `${API_BASE_URL}/api/v1/applications`,
+    RESUME_PROXY: `${API_BASE_URL}/api/v1/applications/resume`,
     USERS: {
       LOGIN: `${API_BASE_URL}/api/v1/users/login`,
       PROFILE: `${API_BASE_URL}/api/v1/users/profile`,

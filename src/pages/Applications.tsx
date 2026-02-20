@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Search, Eye, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { downloadFile } from '@/lib/utils';
+import { downloadFile, getResumeDownloadUrl } from '@/lib/utils';
 
 interface Application {
   _id: string;
@@ -355,7 +355,7 @@ export default function Applications() {
                         {' | '}
                         <button
                           type="button"
-                          onClick={() => downloadFile(app.resumeLink!, `resume-${app._id}.pdf`)}
+                          onClick={() => downloadFile(getResumeDownloadUrl(app.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY), `resume-${app._id}.pdf`)}
                           className="text-blue-600 hover:underline bg-transparent border-0 p-0 cursor-pointer font-inherit"
                         >
                           Resume
