@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save } from 'lucide-react';
 import { format } from 'date-fns';
+import { downloadFile } from '@/lib/utils';
 
 interface Application {
   _id: string;
@@ -301,9 +302,13 @@ export default function ApplicationDetail() {
                   <div>
                     <label className="text-sm font-medium text-gray-600">Resume Link</label>
                     <p className="mt-1">
-                      <a href={application.resumeLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        {application.resumeLink}
-                      </a>
+                      <button
+                        type="button"
+                        onClick={() => downloadFile(application.resumeLink!, `resume-${application._id}.pdf`)}
+                        className="text-blue-600 hover:underline bg-transparent border-0 p-0 cursor-pointer font-inherit text-left"
+                      >
+                        Download resume
+                      </button>
                     </p>
                   </div>
                 )}
@@ -394,9 +399,13 @@ export default function ApplicationDetail() {
                 <div>
                   <label className="text-sm font-medium text-gray-600">Resume Link</label>
                   <p className="mt-1">
-                    <a href={application.resumeLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      {application.resumeLink}
-                    </a>
+                    <button
+                      type="button"
+                      onClick={() => downloadFile(application.resumeLink!, `resume-${application._id}.pdf`)}
+                      className="text-blue-600 hover:underline bg-transparent border-0 p-0 cursor-pointer font-inherit text-left"
+                    >
+                      Download resume
+                    </button>
                   </p>
                 </div>
               )}

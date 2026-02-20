@@ -27,8 +27,8 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200">
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-brand-primary">Trizen Admin</h1>
-          <p className="text-sm text-gray-500 mt-1">Careers Management</p>
+          <h1 className="text-2xl font-bold text-brand-primary">Extrahand</h1>
+          <p className="text-sm text-gray-500 mt-1">Email Platform</p>
         </div>
         
         <nav className="mt-8 px-4">

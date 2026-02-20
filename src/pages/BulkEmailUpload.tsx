@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_CONFIG } from "@/config/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,17 +8,33 @@ import {
   Download,
   FileText,
   Image as ImageIcon,
+  History,
+  Clock,
+  Users,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import * as XLSX from "xlsx";
 
 type UploadRow = {
   email: string;
+};
+
+type EmailHistory = {
+  id: string;
+  timestamp: string;
+  subject: string;
+  recipientCount: number;
+  successCount: number;
+  failedCount: number;
+  recipients: string[];
+  errors: string[];
+  isHtml: boolean;
 };
 
 const DEFAULT_EMAIL_BODY = `Hello,
@@ -30,7 +46,7 @@ We wanted to share an update with you. Please find the details below.
 - Bullet point 3
 
 Thanks,
-Trizen Team`;
+Extrahand Team`;
 
 export default function BulkEmailUpload() {
   const { token, isAuthenticated, isAdmin, logout } = useAuth();
@@ -44,27 +60,22 @@ export default function BulkEmailUpload() {
     failed: number;
     errors: string[];
   } | null>(null);
+  const [emailHistory, setEmailHistory] = useState<EmailHistory[]>([]);
+  const [recipientPagination, setRecipientPagination] = useState<Record<string, number>>({});
+  const [errorPagination, setErrorPagination] = useState<Record<string, number>>({});
+
+  const RECIPIENTS_PER_PAGE = 20;
+  const ERRORS_PER_PAGE = 20;
 
   // Template and attachments
-  const [selectedDomain, setSelectedDomain] = useState("AI & Machine Learning");
-  const [emailSubject, setEmailSubject] = useState("Trizen Update");
+  const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
-  
-  const domains = [
-    'AI & Machine Learning',
-    'IoT & Embedded Systems',
-    'Cloud Computing',
-    'Web & Mobile Applications',
-    'Cybersecurity & Blockchain',
-    'Data Science & Analytics',
-    'Networking & Communication',
-    'Mechanical / ECE Projects'
-  ];
-  
+  const [useHtmlTemplate, setUseHtmlTemplate] = useState(false);
+
   // Generate email template with domain selection link
   const generateEmailTemplate = () => {
     const link = `https://academy.projects.trizenventures.com/projects`;
-    
+
     return `Hi,
 
 Get your FREE PDF with 20+ project ideas! 🚀
@@ -77,6 +88,27 @@ Start building your final year project today!
 Best regards,
 Trizen Academy`;
   };
+
+  // Generate simple HTML email template with image and WhatsApp button
+  const generateHtmlEmailTemplate = () => {
+    const whatsappLink = `https://wa.me/918247422730`;
+    return `
+    <div style="text-align: center; padding: 0; font-family: Arial, sans-serif;">
+      <!-- Image will be inserted here by email service as header logo -->
+      <div style="text-align: center; padding: 30px 20px; background-color: #ffffff;">
+        <p style="font-size: 16px; color: #000000; margin: 0 0 20px 0; line-height: 1.6; font-weight: bold;">
+          For paper drafting, project development, or complete project mentorship services, connect with us on WhatsApp. Get expert assistance at affordable pricing!
+        </p>
+        <a href="${whatsappLink}" style="display: inline-block; background-color: #25D366; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: bold; margin-top: 10px;">
+          <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 30 30" style="vertical-align: middle; margin-right: 8px; display: inline-block;">
+            <path fill="currentColor" d="M 15 3 C 8.373 3 3 8.373 3 15 C 3 17.251208 3.6323415 19.350068 4.7109375 21.150391 L 3.1074219 27 L 9.0820312 25.431641 C 10.829354 26.425062 12.84649 27 15 27 C 21.627 27 27 21.627 27 15 C 27 8.373 21.627 3 15 3 z M 10.892578 9.4023438 C 11.087578 9.4023438 11.287937 9.4011562 11.460938 9.4101562 C 11.674938 9.4151563 11.907859 9.4308281 12.130859 9.9238281 C 12.395859 10.509828 12.972875 11.979906 13.046875 12.128906 C 13.120875 12.277906 13.173313 12.453437 13.070312 12.648438 C 12.972312 12.848437 12.921344 12.969484 12.777344 13.146484 C 12.628344 13.318484 12.465078 13.532109 12.330078 13.662109 C 12.181078 13.811109 12.027219 13.974484 12.199219 14.271484 C 12.371219 14.568484 12.968563 15.542125 13.851562 16.328125 C 14.986562 17.342125 15.944188 17.653734 16.242188 17.802734 C 16.540187 17.951734 16.712766 17.928516 16.884766 17.728516 C 17.061766 17.533516 17.628125 16.864406 17.828125 16.566406 C 18.023125 16.268406 18.222188 16.319969 18.492188 16.417969 C 18.766188 16.515969 20.227391 17.235766 20.525391 17.384766 C 20.823391 17.533766 21.01875 17.607516 21.09375 17.728516 C 21.17075 17.853516 21.170828 18.448578 20.923828 19.142578 C 20.676828 19.835578 19.463922 20.505734 18.919922 20.552734 C 18.370922 20.603734 17.858562 20.7995 15.351562 19.8125 C 12.327563 18.6215 10.420484 15.524219 10.271484 15.324219 C 10.122484 15.129219 9.0605469 13.713906 9.0605469 12.253906 C 9.0605469 10.788906 9.8286563 10.071437 10.097656 9.7734375 C 10.371656 9.4754375 10.692578 9.4023438 10.892578 9.4023438 z"></path>
+          </svg>
+          WhatsApp Chat
+        </a>
+      </div>
+    </div>
+    `.trim();
+  };
   const [attachments, setAttachments] = useState<File[]>([]);
   const [headerLogo, setHeaderLogo] = useState<File | null>(null);
   const [headerLogoUrl, setHeaderLogoUrl] = useState<string>("");
@@ -84,6 +116,68 @@ Trizen Academy`;
 
   // Attachment URLs (for large files hosted elsewhere)
   const [attachmentUrls, setAttachmentUrls] = useState<string>("");
+
+  // Load email history from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("bulk-email-history");
+    if (stored) {
+      try {
+        setEmailHistory(JSON.parse(stored));
+      } catch (e) {
+        console.error("Failed to load email history:", e);
+      }
+    }
+  }, []);
+
+  // Save email history to localStorage
+  const saveEmailHistory = (history: EmailHistory) => {
+    const updated = [history, ...emailHistory]; // Keep all history entries
+    setEmailHistory(updated);
+    localStorage.setItem("bulk-email-history", JSON.stringify(updated));
+  };
+
+  // Pagination helpers
+  const getRecipientPage = (entryId: string) => recipientPagination[entryId] || 1;
+  const setRecipientPage = (entryId: string, page: number) => {
+    setRecipientPagination(prev => ({ ...prev, [entryId]: page }));
+  };
+
+  const getRecipientPageData = (entry: EmailHistory) => {
+    const currentPage = getRecipientPage(entry.id);
+    const startIndex = (currentPage - 1) * RECIPIENTS_PER_PAGE;
+    const endIndex = startIndex + RECIPIENTS_PER_PAGE;
+    const totalPages = Math.ceil(entry.recipients.length / RECIPIENTS_PER_PAGE);
+    const paginatedRecipients = entry.recipients.slice(startIndex, endIndex);
+
+    return {
+      currentPage,
+      totalPages,
+      paginatedRecipients,
+      startIndex: startIndex + 1,
+      endIndex: Math.min(endIndex, entry.recipients.length),
+    };
+  };
+
+  const getErrorPage = (entryId: string) => errorPagination[entryId] || 1;
+  const setErrorPage = (entryId: string, page: number) => {
+    setErrorPagination(prev => ({ ...prev, [entryId]: page }));
+  };
+
+  const getErrorPageData = (entry: EmailHistory) => {
+    const currentPage = getErrorPage(entry.id);
+    const startIndex = (currentPage - 1) * ERRORS_PER_PAGE;
+    const endIndex = startIndex + ERRORS_PER_PAGE;
+    const totalPages = Math.ceil(entry.errors.length / ERRORS_PER_PAGE);
+    const paginatedErrors = entry.errors.slice(startIndex, endIndex);
+
+    return {
+      currentPage,
+      totalPages,
+      paginatedErrors,
+      startIndex: startIndex + 1,
+      endIndex: Math.min(endIndex, entry.errors.length),
+    };
+  };
 
   const handleFile = async (file: File) => {
     setUploadError(null);
@@ -195,12 +289,17 @@ Trizen Academy`;
     const sendOne = async (row: UploadRow) => {
       const endpoint = `${API_CONFIG.EMAIL_SERVICE.BASE_URL}/api/support/send-custom`;
 
+      // Use HTML template if enabled, otherwise use plain text
+      const messageBody = useHtmlTemplate
+        ? generateHtmlEmailTemplate()
+        : emailBody;
+
       const body = {
         clientEmail: row.email,
         clientName: "Student",
         subject: emailSubject,
-        message: emailBody,
-        isHtml: false,
+        message: messageBody,
+        isHtml: useHtmlTemplate, // Enable HTML mode
         attachments: attachmentData,
       };
 
@@ -243,6 +342,21 @@ Trizen Academy`;
 
     await Promise.all(tasks);
     setSendSummary({ success, failed, errors });
+
+    // Save to history
+    const historyEntry: EmailHistory = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      subject: emailSubject,
+      recipientCount: rows.length,
+      successCount: success,
+      failedCount: failed,
+      recipients: rows.map(r => r.email),
+      errors: errors,
+      isHtml: useHtmlTemplate,
+    };
+    saveEmailHistory(historyEntry);
+
     setSending(false);
   };
 
@@ -276,36 +390,42 @@ Trizen Academy`;
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Domain (for Project Funnel)
+          <div className="flex items-center gap-4 mb-4">
+            <Label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useHtmlTemplate}
+                onChange={(e) => {
+                  setUseHtmlTemplate(e.target.checked);
+                  if (e.target.checked) {
+                    // Auto-generate HTML template when enabled
+                    setEmailBody(generateHtmlEmailTemplate());
+                    setEmailSubject("Trizen Academy - Academic Projects");
+                  } else {
+                    // Reset to plain text template
+                    setEmailBody(generateEmailTemplate());
+                    setEmailSubject("Trizen Update");
+                  }
+                }}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Use Image Email Template with WhatsApp Link
+              </span>
             </Label>
-            <Select value={selectedDomain} onValueChange={setSelectedDomain}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a domain" />
-              </SelectTrigger>
-              <SelectContent>
-                {domains.map((domain) => (
-                  <SelectItem key={domain} value={domain}>
-                    {domain}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">
-              The email will include a link to the selected domain's project page.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => setEmailBody(generateEmailTemplate())}
-            >
-              Generate Email Template with Domain Link
-            </Button>
           </div>
-          
+
+          {useHtmlTemplate && (
+            <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 font-bold mb-2">
+                ✓ Image Email Template Enabled
+              </p>
+              <p className="text-xs text-blue-700">
+                Upload an image as header logo - it will be displayed with a WhatsApp link below it.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email Subject
@@ -334,11 +454,10 @@ Trizen Academy`;
                   setUseHeaderLogoUrl(false);
                   setHeaderLogoUrl("");
                 }}
-                className={`px-3 py-1 text-sm rounded-md border ${
-                  !useHeaderLogoUrl
-                    ? "bg-blue-50 border-blue-300 text-blue-700"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`px-3 py-1 text-sm rounded-md border ${!useHeaderLogoUrl
+                  ? "bg-blue-50 border-blue-300 text-blue-700"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
               >
                 Upload File
               </button>
@@ -348,11 +467,10 @@ Trizen Academy`;
                   setUseHeaderLogoUrl(true);
                   setHeaderLogo(null);
                 }}
-                className={`px-3 py-1 text-sm rounded-md border ${
-                  useHeaderLogoUrl
-                    ? "bg-blue-50 border-blue-300 text-blue-700"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`px-3 py-1 text-sm rounded-md border ${useHeaderLogoUrl
+                  ? "bg-blue-50 border-blue-300 text-blue-700"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
               >
                 Use URL
               </button>
@@ -419,20 +537,43 @@ Trizen Academy`;
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Body (plain text)
+              {useHtmlTemplate ? 'HTML Email Template (Preview)' : 'Email Body (plain text)'}
             </label>
-            <Textarea
-              value={emailBody}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setEmailBody(e.target.value)
-              }
-              placeholder="Write the email body in plain text"
-              rows={12}
-              className="w-full font-mono text-sm"
-            />
+            {useHtmlTemplate ? (
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong className="text-blue-600">Simple Professional HTML Template:</strong> Clean, text-based email
+                  with project information, deliverables list, and contact details. Includes a simple download button linking to
+                  <strong className="ml-1">Domain Selection Page</strong>.
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                  Professional and straightforward design. You can customize the HTML below if needed.
+                </p>
+                <Textarea
+                  value={emailBody}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setEmailBody(e.target.value)
+                  }
+                  placeholder="HTML email template"
+                  rows={20}
+                  className="w-full font-mono text-sm"
+                />
+              </div>
+            ) : (
+              <Textarea
+                value={emailBody}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setEmailBody(e.target.value)
+                }
+                placeholder="Write the email body in plain text"
+                rows={12}
+                className="w-full font-mono text-sm"
+              />
+            )}
             <p className="text-xs text-gray-500 mt-1">
-              Plain text only. Add links as full URLs (e.g.,
-              https://example.com).
+              {useHtmlTemplate
+                ? 'HTML template with download button. Customize as needed.'
+                : 'Plain text only. Add links as full URLs (e.g., https://example.com).'}
             </p>
           </div>
 
@@ -571,9 +712,8 @@ Trizen Academy`;
                     <Mail className="h-4 w-4" />
                     {sending
                       ? "Sending..."
-                      : `Send ${rows.length} email${
-                          rows.length !== 1 ? "s" : ""
-                        }`}
+                      : `Send ${rows.length} email${rows.length !== 1 ? "s" : ""
+                      }`}
                   </Button>
                 </div>
               </div>
@@ -631,6 +771,232 @@ Trizen Academy`;
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Email History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Email History
+          </CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            Track all your sent email campaigns
+          </p>
+        </CardHeader>
+        <CardContent>
+          {emailHistory.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <History className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+              <p>No email history yet. Sent emails will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {emailHistory.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-gray-900">
+                          {entry.subject}
+                        </h3>
+                        {entry.isHtml && (
+                          <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                            HTML
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>
+                            {new Date(entry.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          <span>{entry.recipientCount} recipients</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="font-semibold">
+                            {entry.successCount}
+                          </span>
+                        </div>
+                        {entry.failedCount > 0 && (
+                          <div className="flex items-center gap-1 text-red-600">
+                            <XCircle className="h-4 w-4" />
+                            <span className="font-semibold">
+                              {entry.failedCount}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recipients List with Pagination */}
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                      View all recipients ({entry.recipients.length})
+                    </summary>
+                    <div className="mt-2 p-4 bg-gray-50 rounded-md border">
+                      {(() => {
+                        const pageData = getRecipientPageData(entry);
+                        return (
+                          <>
+                            {/* Recipients List */}
+                            <div className="mb-3 space-y-1 max-h-96 overflow-y-auto">
+                              {pageData.paginatedRecipients.map((email, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs text-gray-700 py-1.5 px-2 border-b border-gray-200 last:border-0 hover:bg-gray-100 rounded"
+                                >
+                                  <span className="font-medium text-gray-500 mr-2">
+                                    {pageData.startIndex + idx}.
+                                  </span>
+                                  {email}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {pageData.totalPages > 1 && (
+                              <div className="flex items-center justify-between pt-3 border-t border-gray-300">
+                                <div className="text-xs text-gray-600">
+                                  Showing {pageData.startIndex} - {pageData.endIndex} of {entry.recipients.length} recipients
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                      e.preventDefault();
+                                      setRecipientPage(entry.id, pageData.currentPage - 1);
+                                    }}
+                                    disabled={pageData.currentPage === 1}
+                                    className="h-7 px-3 text-xs"
+                                  >
+                                    Previous
+                                  </Button>
+                                  <div className="text-xs text-gray-600">
+                                    Page {pageData.currentPage} of {pageData.totalPages}
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                      e.preventDefault();
+                                      setRecipientPage(entry.id, pageData.currentPage + 1);
+                                    }}
+                                    disabled={pageData.currentPage === pageData.totalPages}
+                                    className="h-7 px-3 text-xs"
+                                  >
+                                    Next
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            {pageData.totalPages === 1 && (
+                              <div className="text-xs text-gray-500 pt-2 border-t border-gray-300">
+                                Showing all {entry.recipients.length} recipients
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </details>
+
+                  {/* Errors with Pagination */}
+                  {entry.errors.length > 0 && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-sm text-red-600 hover:text-red-700">
+                        View errors ({entry.errors.length})
+                      </summary>
+                      <div className="mt-2 p-4 bg-red-50 rounded-md border border-red-200">
+                        {(() => {
+                          const errorPageData = getErrorPageData(entry);
+                          return (
+                            <>
+                              {/* Errors List */}
+                              <div className="mb-3 space-y-1 max-h-96 overflow-y-auto">
+                                <ul className="space-y-1 text-xs text-red-700">
+                                  {errorPageData.paginatedErrors.map((error, idx) => (
+                                    <li
+                                      key={idx}
+                                      className="py-1.5 px-2 border-b border-red-200 last:border-0 hover:bg-red-100 rounded"
+                                    >
+                                      <span className="font-medium text-red-500 mr-2">
+                                        {errorPageData.startIndex + idx}.
+                                      </span>
+                                      {error}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              {/* Pagination Controls */}
+                              {errorPageData.totalPages > 1 && (
+                                <div className="flex items-center justify-between pt-3 border-t border-red-300">
+                                  <div className="text-xs text-red-600">
+                                    Showing {errorPageData.startIndex} - {errorPageData.endIndex} of {entry.errors.length} errors
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                        e.preventDefault();
+                                        setErrorPage(entry.id, errorPageData.currentPage - 1);
+                                      }}
+                                      disabled={errorPageData.currentPage === 1}
+                                      className="h-7 px-3 text-xs border-red-300 text-red-700 hover:bg-red-100"
+                                    >
+                                      Previous
+                                    </Button>
+                                    <div className="text-xs text-red-600">
+                                      Page {errorPageData.currentPage} of {errorPageData.totalPages}
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                        e.preventDefault();
+                                        setErrorPage(entry.id, errorPageData.currentPage + 1);
+                                      }}
+                                      disabled={errorPageData.currentPage === errorPageData.totalPages}
+                                      className="h-7 px-3 text-xs border-red-300 text-red-700 hover:bg-red-100"
+                                    >
+                                      Next
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              {errorPageData.totalPages === 1 && (
+                                <div className="text-xs text-red-500 pt-2 border-t border-red-300">
+                                  Showing all {entry.errors.length} errors
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
         </CardContent>
       </Card>
 
