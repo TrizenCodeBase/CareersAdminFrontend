@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
+import { getJobTitle } from '@/config/jobs';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -118,15 +119,6 @@ export default function ApplicationDetail() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const getJobTitle = (jobId: string) => {
-    const jobMap: Record<string, string> = {
-      'TV-AIML-INT-2025-001': 'AIML Intern',
-      'TV-WEB-MERN-2025-005': 'MERN Stack Developer Intern',
-      'TV-MKT-SMM-2025-003': 'Social Media Management Intern',
-    };
-    return jobMap[jobId] || jobId;
   };
 
   const getStatusBadge = (status: string) => {
@@ -304,7 +296,13 @@ export default function ApplicationDetail() {
                     <p className="mt-1">
                       <button
                         type="button"
-                        onClick={() => downloadFile(getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY), `resume-${application._id}.pdf`)}
+                        onClick={() =>
+                          downloadFile(
+                            getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY),
+                            `resume-${application._id}.pdf`,
+                            application.resumeLink
+                          )
+                        }
                         className="text-blue-600 hover:underline bg-transparent border-0 p-0 cursor-pointer font-inherit text-left"
                       >
                         Download resume
@@ -401,7 +399,13 @@ export default function ApplicationDetail() {
                   <p className="mt-1">
                     <button
                       type="button"
-                      onClick={() => downloadFile(getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY), `resume-${application._id}.pdf`)}
+                      onClick={() =>
+                        downloadFile(
+                          getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY),
+                          `resume-${application._id}.pdf`,
+                          application.resumeLink
+                        )
+                      }
                       className="text-blue-600 hover:underline bg-transparent border-0 p-0 cursor-pointer font-inherit text-left"
                     >
                       Download resume

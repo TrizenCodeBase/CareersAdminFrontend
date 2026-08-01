@@ -25,7 +25,7 @@ export function extractKeyFromResumeUrl(url: string | undefined): string | null 
 }
 
 /**
- * Prefer backend proxy URL for resume download (avoids redirect/CORS with MinIO). Pass API resume proxy base and resumeLink.
+ * Prefer backend proxy URL for resume download (avoids redirect/CORS with MinIO).
  */
 export function getResumeDownloadUrl(resumeLink: string, resumeProxyBase: string): string {
   const key = extractKeyFromResumeUrl(resumeLink);
@@ -33,33 +33,58 @@ export function getResumeDownloadUrl(resumeLink: string, resumeProxyBase: string
   return resumeLink;
 }
 
-/**
- * Download a file from a URL. Triggers a download instead of opening in a new tab.
- * Falls back to opening in a new tab if fetch fails (e.g. CORS).
- */
-export function downloadFile(url: string, defaultFilename: string = 'resume.pdf'): void {
-  try {
-    const filenameFromUrl = url.split('/').pop()?.split('?')[0] || defaultFilename
-    const filename = filenameFromUrl && /\.(pdf|doc|docx)$/i.test(filenameFromUrl) ? filenameFromUrl : defaultFilename
-
-    fetch(url, { mode: 'cors' })
-      .then((res) => {
-        if (!res.ok) throw new Error('Fetch failed')
-        return res.blob()
-      })
-      .then((blob) => {
-        const blobUrl = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = blobUrl
-        a.download = filename
-        a.click()
-        URL.revokeObjectURL(blobUrl)
-      })
-      .catch(() => {
-        window.open(url, '_blank', 'noopener,noreferrer')
-      })
-  } catch {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(blobUrl);
 }
 
+/**
+ * Download a resume. Tries backend proxy first, then the original MinIO/presigned URL.
+ */
+export async function downloadFile(
+  url: string,
+  defaultFilename: string = 'resume.pdf',
+  fallbackUrl?: string
+): Promise<void> {
+  const filenameFromUrl = url.split('/').pop()?.split('?')[0] || defaultFilename;
+  const filename =
+    filenameFromUrl && /\.(pdf|doc|docx)$/i.test(filenameFromUrl)
+      ? filenameFromUrl
+      : defaultFilename;
+
+  const tryFetch = async (target: string) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const res = await fetch(target, { mode: 'cors', signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      triggerBlobDownload(blob, filename);
+      return true;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  try {
+    if (await tryFetch(url)) return;
+  } catch (proxyErr) {
+    console.warn('Resume proxy download failed, trying original link', proxyErr);
+  }
+
+  if (fallbackUrl && fallbackUrl !== url) {
+    try {
+      if (await tryFetch(fallbackUrl)) return;
+    } catch (fallbackErr) {
+      console.warn('Resume fallback fetch failed, opening in new tab', fallbackErr);
+      window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer');
+}

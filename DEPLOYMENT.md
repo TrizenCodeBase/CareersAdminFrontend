@@ -11,11 +11,11 @@ This guide explains how to deploy the Careers Admin Frontend using Docker and Ca
 ## Environment Variables
 
 ### Required Build-Time Variables
-- `VITE_API_BASE_URL`: The base URL of the backend API (e.g., `https://trizencareersbackend.llp.trizenventures.com`)
+- `VITE_API_BASE_URL`: The base URL of the backend API (e.g., `https://trizen-careers-backend.llp.trizenventures.com`)
 
 ### Example
 ```
-VITE_API_BASE_URL=https://trizencareersbackend.llp.trizenventures.com
+VITE_API_BASE_URL=https://trizen-careers-backend.llp.trizenventures.com
 ```
 
 ## Deployment Steps
@@ -39,7 +39,7 @@ cd careers-admin-frontend
 
 # Build the Docker image
 docker build \
-  --build-arg VITE_API_BASE_URL=https://trizencareersbackend.llp.trizenventures.com \
+  --build-arg VITE_API_BASE_URL=https://trizen-careers-backend.llp.trizenventures.com \
   -t careers-admin-frontend:latest .
 
 # Run the container
@@ -62,7 +62,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: https://trizencareersbackend.llp.trizenventures.com
+        VITE_API_BASE_URL: https://trizen-careers-backend.llp.trizenventures.com
     ports:
       - "80:80"
     restart: unless-stopped

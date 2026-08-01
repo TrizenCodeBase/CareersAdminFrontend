@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
+import { getJobTitle } from '@/config/jobs';
 import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -132,15 +133,6 @@ export default function EmailNotifications() {
         return newSet;
       });
     }
-  };
-
-  const getJobTitle = (jobId: string) => {
-    const jobMap: Record<string, string> = {
-      'TV-AIML-INT-2025-001': 'AIML Intern',
-      'TV-WEB-MERN-2025-005': 'MERN Stack Developer Intern',
-      'TV-MKT-SMM-2025-003': 'Social Media Management Intern',
-    };
-    return jobMap[jobId] || jobId;
   };
 
   const getStatusBadge = (status: string) => {
