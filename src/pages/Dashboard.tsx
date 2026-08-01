@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
+import { APPLICATION_STATUSES, formatStatusLabel } from '@/config/applicationStatus';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Clock, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Stats {
   totalApplications: number;
   recentApplications: number;
-  statusBreakdown: {
-    pending: number;
-    reviewed: number;
-    shortlisted: number;
-    rejected: number;
-    accepted: number;
-  };
+  statusBreakdown: Record<string, number>;
 }
 
 export default function Dashboard() {
@@ -70,6 +65,7 @@ export default function Dashboard() {
     );
   }
 
+  const breakdown = stats.statusBreakdown || {};
   const statCards = [
     {
       title: 'Total Applications',
@@ -87,28 +83,35 @@ export default function Dashboard() {
     },
     {
       title: 'Pending',
-      value: stats.statusBreakdown.pending,
+      value: breakdown.pending || 0,
       icon: Clock,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
     {
+      title: 'Assignment sent',
+      value: breakdown.assignment_sent || 0,
+      icon: Send,
+      color: 'text-sky-600',
+      bgColor: 'bg-sky-50',
+    },
+    {
       title: 'Shortlisted',
-      value: stats.statusBreakdown.shortlisted,
+      value: breakdown.shortlisted || 0,
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
       title: 'Accepted',
-      value: stats.statusBreakdown.accepted,
+      value: breakdown.accepted || 0,
       icon: CheckCircle,
       color: 'text-green-700',
       bgColor: 'bg-green-100',
     },
     {
       title: 'Rejected',
-      value: stats.statusBreakdown.rejected,
+      value: breakdown.rejected || 0,
       icon: XCircle,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
@@ -148,27 +151,13 @@ export default function Dashboard() {
           <CardTitle>Status Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center p-4 bg-orange-50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">{stats.statusBreakdown.pending}</div>
-              <div className="text-sm text-gray-600 mt-1">Pending</div>
-            </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{stats.statusBreakdown.reviewed}</div>
-              <div className="text-sm text-gray-600 mt-1">Reviewed</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{stats.statusBreakdown.shortlisted}</div>
-              <div className="text-sm text-gray-600 mt-1">Shortlisted</div>
-            </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">{stats.statusBreakdown.rejected}</div>
-              <div className="text-sm text-gray-600 mt-1">Rejected</div>
-            </div>
-            <div className="text-center p-4 bg-green-100 rounded-lg">
-              <div className="text-2xl font-bold text-green-700">{stats.statusBreakdown.accepted}</div>
-              <div className="text-sm text-gray-600 mt-1">Accepted</div>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {APPLICATION_STATUSES.map((status) => (
+              <div key={status} className="text-center p-4 bg-slate-50 rounded-lg">
+                <div className="text-2xl font-bold text-slate-800">{breakdown[status] || 0}</div>
+                <div className="text-sm text-gray-600 mt-1">{formatStatusLabel(status)}</div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

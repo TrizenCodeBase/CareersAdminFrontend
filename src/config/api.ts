@@ -19,6 +19,9 @@ export const API_CONFIG = {
     APPLICATIONS: `${API_BASE_URL}/api/v1/applications`,
     APPLICATIONS_LOOKUP_EMAILS: `${API_BASE_URL}/api/v1/applications/lookup-emails`,
     RESUME_PROXY: `${API_BASE_URL}/api/v1/applications/resume`,
+    applicationStatus: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/status`,
+    applicationAdminNotes: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/admin-notes`,
+    applicationById: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}`,
     USERS: {
       LOGIN: `${API_BASE_URL}/api/v1/users/login`,
       PROFILE: `${API_BASE_URL}/api/v1/users/profile`,

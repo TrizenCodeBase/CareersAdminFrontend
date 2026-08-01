@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
-import { JOB_OPTIONS, getJobTitle } from '@/config/jobs';
+import { JOB_OPTIONS, getJobTitle, getRoleFamilyLabel, isSameRoleFamily } from '@/config/jobs';
+import { APPLICATION_STATUSES, formatStatusLabel } from '@/config/applicationStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,13 @@ function parseBulkEmails(input: string): string[] {
   return emails.length >= 2 ? emails : [];
 }
 
+interface AppliedRole {
+  _id: string;
+  jobId: string;
+  status: string;
+  createdAt?: string;
+}
+
 interface Application {
   _id: string;
   fullName: string;
@@ -46,6 +54,15 @@ interface Application {
   jobId: string;
   status: string;
   createdAt: string;
+  source?: string;
+  githubPortfolio?: string;
+  assignmentSent?: boolean;
+  assignmentReceived?: boolean;
+  interviewLinkSent?: boolean;
+  interviewScheduledDate?: string | null;
+  interviewStatus?: string;
+  interviewRecordingLink?: string;
+  adminRemarks?: string;
   portfolioUrl?: string;
   portfolioWorkSamples?: string;
   resumeLink?: string;
@@ -55,6 +72,9 @@ interface Application {
   currentQualification?: string;
   collegeUniversity?: string;
   workPreference?: string;
+  roleCount?: number;
+  appliedRoles?: AppliedRole[];
+  otherRoles?: AppliedRole[];
   appliedBy?: {
     firstName: string;
     lastName: string;
@@ -76,34 +96,57 @@ interface EmailLookupResult {
 export default function Applications() {
   const { token, isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [jobIdFilter, setJobIdFilter] = useState('all');
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get('q') || '');
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'all');
+  const [jobIdFilter, setJobIdFilter] = useState(() => searchParams.get('jobId') || 'all');
+  const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1));
   const [totalPages, setTotalPages] = useState(1);
   const [totalApplications, setTotalApplications] = useState(0);
   const [exportingEmails, setExportingEmails] = useState(false);
   const [emailLookup, setEmailLookup] = useState<EmailLookupResult | null>(null);
   const [copiedKind, setCopiedKind] = useState<'found' | 'missing' | 'notInList' | null>(null);
+  const [filtersReady, setFiltersReady] = useState(false);
 
   const bulkEmails = useMemo(() => parseBulkEmails(debouncedSearch), [debouncedSearch]);
   const isBulkEmailMode = bulkEmails.length >= 2;
   const liveBulkEmails = useMemo(() => parseBulkEmails(search), [search]);
   const showBulkSearchUi = liveBulkEmails.length >= 2 || isBulkEmailMode;
 
+  const listReturnState = useMemo(
+    () => ({ fromList: searchParams.toString() }),
+    [searchParams]
+  );
+
+  // Persist filters in the URL so navigating to detail and back keeps them
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set('q', debouncedSearch);
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (jobIdFilter !== 'all') params.set('jobId', jobIdFilter);
+    if (page > 1) params.set('page', String(page));
+    setSearchParams(params, { replace: true });
+    setFiltersReady(true);
+  }, [debouncedSearch, statusFilter, jobIdFilter, page, setSearchParams]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(1);
+      const next = search.trim();
+      setDebouncedSearch((prev) => {
+        if (prev !== next) setPage(1);
+        return next;
+      });
     }, 500);
 
     return () => clearTimeout(timer);
   }, [search]);
 
   useEffect(() => {
+    if (!filtersReady) return;
     if (!isAuthenticated || !isAdmin) {
       navigate('/login');
       return;
@@ -115,7 +158,7 @@ export default function Applications() {
       setEmailLookup(null);
       fetchApplications();
     }
-  }, [isAuthenticated, isAdmin, navigate, page, statusFilter, jobIdFilter, debouncedSearch, isBulkEmailMode]);
+  }, [filtersReady, isAuthenticated, isAdmin, navigate, page, statusFilter, jobIdFilter, debouncedSearch, isBulkEmailMode]);
 
   const buildFilterParams = (pageNum: number, limit: number) => {
     const params = new URLSearchParams({
@@ -203,8 +246,8 @@ export default function Applications() {
 
       if (data.success && data.data) {
         setApplications(data.data);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalApplications(data.pagination?.totalApplications ?? data.data.length);
+        setTotalPages(Math.max(1, Number(data.pagination?.totalPages) || 1));
+        setTotalApplications(Number(data.pagination?.totalApplications) || data.data.length || 0);
       } else {
         setApplications([]);
         setTotalPages(1);
@@ -315,13 +358,17 @@ export default function Applications() {
       pending: 'warning',
       reviewed: 'secondary',
       shortlisted: 'success',
+      assignment_sent: 'default',
+      assignment_received: 'default',
+      interview_link_sent: 'default',
+      interview_scheduled: 'success',
       accepted: 'success',
       rejected: 'destructive',
     };
 
     return (
       <Badge variant={variants[status] || 'default'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {formatStatusLabel(status)}
       </Badge>
     );
   };
@@ -398,11 +445,11 @@ export default function Applications() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="reviewed">Reviewed</SelectItem>
-            <SelectItem value="shortlisted">Shortlisted</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-            <SelectItem value="accepted">Accepted</SelectItem>
+            {APPLICATION_STATUSES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {formatStatusLabel(status)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -565,7 +612,7 @@ export default function Applications() {
           )}
           {statusFilter !== 'all' && (
             <Badge variant="secondary" className="flex items-center gap-1">
-              Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+              Status: {formatStatusLabel(statusFilter)}
               <button
                 type="button"
                 onClick={() => {
@@ -623,14 +670,13 @@ export default function Applications() {
               <TableHead className="min-w-[150px]">Name</TableHead>
               <TableHead className="min-w-[200px]">Email</TableHead>
               <TableHead className="min-w-[120px]">Phone</TableHead>
-              <TableHead className="min-w-[150px]">Location</TableHead>
+              <TableHead className="min-w-[120px]">Source</TableHead>
               <TableHead className="min-w-[180px]">Job Role</TableHead>
-              <TableHead className="min-w-[120px]">Expected Stipend</TableHead>
-              <TableHead className="min-w-[150px]">Education</TableHead>
-              <TableHead className="min-w-[120px]">Preferred Start</TableHead>
-              <TableHead className="min-w-[200px]">LinkedIn</TableHead>
-              <TableHead className="min-w-[150px]">Portfolio/Resume</TableHead>
-              <TableHead className="min-w-[100px]">Status</TableHead>
+              <TableHead className="min-w-[160px]">GitHub / Portfolio</TableHead>
+              <TableHead className="min-w-[140px]">Assignment</TableHead>
+              <TableHead className="min-w-[160px]">Interview</TableHead>
+              <TableHead className="min-w-[120px]">Status</TableHead>
+              <TableHead className="min-w-[160px]">Remarks</TableHead>
               <TableHead className="min-w-[120px]">Applied Date</TableHead>
               <TableHead className="min-w-[100px]">Actions</TableHead>
             </TableRow>
@@ -638,7 +684,7 @@ export default function Applications() {
           <TableBody>
             {!loading && applications.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={12} className="text-center py-8 text-gray-500">
                   {isBulkEmailMode
                     ? 'None of these emails were found in the database'
                     : `No applications found${hasActiveFilters ? ' for the selected filters' : ''}`}
@@ -658,72 +704,107 @@ export default function Applications() {
                       {app.phone}
                     </a>
                   </TableCell>
-                  <TableCell>{app.location}</TableCell>
+                  <TableCell>{app.source || '—'}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span>{getJobTitle(app.jobId)}</span>
+                    <div className="flex flex-col gap-1 min-w-[200px]">
+                      <span className="font-medium">{getJobTitle(app.jobId)}</span>
                       <span className="text-xs text-gray-400">{app.jobId}</span>
+                      {(app.roleCount || 1) > 1 && (
+                        <div className="mt-1 space-y-1">
+                          <Badge variant="secondary" className="w-fit">
+                            Applied to {app.roleCount} roles
+                          </Badge>
+                          {(app.otherRoles || []).some((role) =>
+                            isSameRoleFamily(role.jobId, app.jobId)
+                          ) && (
+                            <Badge
+                              variant="outline"
+                              className="w-fit border-amber-300 bg-amber-50 text-amber-900"
+                            >
+                              Applied to {getRoleFamilyLabel(app.jobId)} before
+                            </Badge>
+                          )}
+                          <div className="flex flex-col gap-0.5">
+                            {(app.otherRoles || [])
+                              .slice(0, 4)
+                              .map((role) => (
+                                <Link
+                                  key={role._id}
+                                  to={`/applications/${role._id}`}
+                                  state={listReturnState}
+                                  className="text-xs text-blue-600 hover:underline"
+                                >
+                                  {isSameRoleFamily(role.jobId, app.jobId) ? '↻ ' : '+ '}
+                                  {getJobTitle(role.jobId)} ({formatStatusLabel(role.status)})
+                                </Link>
+                              ))}
+                            {(app.otherRoles?.length || 0) > 4 && (
+                              <span className="text-xs text-gray-500">
+                                +{(app.otherRoles?.length || 0) - 4} more — open View
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
-                  <TableCell>{app.expectedStipend || 'N/A'}</TableCell>
                   <TableCell>
-                    {app.educationStatus || app.currentQualification || 'N/A'}
-                    {app.degreeDiscipline && ` - ${app.degreeDiscipline}`}
-                    {app.collegeUniversity && ` (${app.collegeUniversity})`}
-                  </TableCell>
-                  <TableCell>{app.preferredStartDate || 'N/A'}</TableCell>
-                  <TableCell>
-                    {app.linkedinProfile ? (
+                    {app.githubPortfolio || app.portfolioUrl || app.portfolioWorkSamples ? (
                       <a
-                        href={app.linkedinProfile}
+                        href={app.githubPortfolio || app.portfolioUrl || app.portfolioWorkSamples}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline truncate block max-w-[200px]"
-                        title={app.linkedinProfile}
+                        className="text-blue-600 hover:underline truncate block max-w-[160px]"
+                        title={app.githubPortfolio || app.portfolioUrl || app.portfolioWorkSamples}
                       >
-                        View Profile
+                        Open
                       </a>
                     ) : (
-                      'N/A'
+                      '—'
                     )}
                   </TableCell>
                   <TableCell>
-                    {app.portfolioUrl || app.portfolioWorkSamples ? (
-                      <a
-                        href={app.portfolioUrl || app.portfolioWorkSamples}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline truncate block max-w-[150px]"
-                        title={app.portfolioUrl || app.portfolioWorkSamples}
-                      >
-                        Portfolio
-                      </a>
-                    ) : (
-                      'N/A'
-                    )}
-                    {app.resumeLink && (
-                      <>
-                        {' | '}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            downloadFile(
-                              getResumeDownloadUrl(app.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY),
-                              `resume-${app._id}.pdf`,
-                              app.resumeLink
-                            )
-                          }
-                          className="text-blue-600 hover:underline bg-transparent border-0 p-0 cursor-pointer font-inherit"
+                    <div className="flex flex-col gap-1 text-xs">
+                      <span className={app.assignmentSent ? 'text-emerald-700' : 'text-gray-400'}>
+                        Sent: {app.assignmentSent ? 'Yes' : 'No'}
+                      </span>
+                      <span className={app.assignmentReceived ? 'text-emerald-700' : 'text-gray-400'}>
+                        Received: {app.assignmentReceived ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1 text-xs">
+                      <span className={app.interviewLinkSent ? 'text-emerald-700' : 'text-gray-400'}>
+                        Link: {app.interviewLinkSent ? 'Sent' : 'No'}
+                      </span>
+                      <span>
+                        {app.interviewScheduledDate
+                          ? format(new Date(app.interviewScheduledDate), 'MMM d, yyyy h:mm a')
+                          : 'No date'}
+                      </span>
+                      <span>{formatStatusLabel(app.interviewStatus || 'not_scheduled')}</span>
+                      {app.interviewRecordingLink && (
+                        <a
+                          href={app.interviewRecordingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
                         >
-                          Resume
-                        </button>
-                      </>
-                    )}
+                          Recording
+                        </a>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(app.status)}</TableCell>
+                  <TableCell>
+                    <span className="line-clamp-2 text-xs text-gray-600 max-w-[160px]" title={app.adminRemarks || ''}>
+                      {app.adminRemarks?.trim() || '—'}
+                    </span>
+                  </TableCell>
                   <TableCell>{format(new Date(app.createdAt), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>
-                    <Link to={`/applications/${app._id}`}>
+                    <Link to={`/applications/${app._id}`} state={listReturnState}>
                       <Button variant="outline" size="sm">
                         <Eye className="h-4 w-4 mr-2" />
                         View

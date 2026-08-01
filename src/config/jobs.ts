@@ -33,3 +33,44 @@ export function getJobTitle(jobId?: string | null): string {
   if (!jobId) return 'N/A';
   return JOB_TITLES[jobId] || jobId;
 }
+
+/** Groups openings that are the same role family across years/codes (e.g. all MERN). */
+export function getRoleFamily(jobId?: string | null): string {
+  if (!jobId) return '';
+  if (jobId.includes('WEB-MERN')) return 'mern';
+  if (jobId.includes('AIML-INT')) return 'aiml';
+  if (jobId.includes('AI-AUT')) return 'ai-aut';
+  if (jobId.includes('AI-FS')) return 'ai-fs';
+  if (jobId.includes('MKT-SMM')) return 'smm';
+  if (jobId.includes('MKT-CSM')) return 'csm';
+  if (jobId.includes('MKT-GM')) return 'growth';
+  return jobId;
+}
+
+export function isSameRoleFamily(a?: string | null, b?: string | null): boolean {
+  const fa = getRoleFamily(a);
+  const fb = getRoleFamily(b);
+  return Boolean(fa && fb && fa === fb);
+}
+
+export function getRoleFamilyLabel(jobId?: string | null): string {
+  const family = getRoleFamily(jobId);
+  switch (family) {
+    case 'mern':
+      return 'MERN / Full Stack';
+    case 'aiml':
+      return 'AIML Intern';
+    case 'ai-aut':
+      return 'AI & Automation';
+    case 'ai-fs':
+      return 'AI & Automation Intern';
+    case 'smm':
+      return 'Social Media Management';
+    case 'csm':
+      return 'Content & Social Media';
+    case 'growth':
+      return 'Growth Marketing';
+    default:
+      return getJobTitle(jobId);
+  }
+}
