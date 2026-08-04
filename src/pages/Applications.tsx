@@ -670,7 +670,7 @@ export default function Applications() {
               <TableHead className="min-w-[150px]">Name</TableHead>
               <TableHead className="min-w-[200px]">Email</TableHead>
               <TableHead className="min-w-[120px]">Phone</TableHead>
-              <TableHead className="min-w-[120px]">Source</TableHead>
+              <TableHead className="min-w-[120px]">Resume</TableHead>
               <TableHead className="min-w-[180px]">Job Role</TableHead>
               <TableHead className="min-w-[160px]">GitHub / Portfolio</TableHead>
               <TableHead className="min-w-[140px]">Assignment</TableHead>
@@ -704,7 +704,26 @@ export default function Applications() {
                       {app.phone}
                     </a>
                   </TableCell>
-                  <TableCell>{app.source || '—'}</TableCell>
+                  <TableCell>
+                    {app.resumeLink ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          downloadFile(
+                            getResumeDownloadUrl(app.resumeLink, API_CONFIG.ENDPOINTS.RESUME_PROXY),
+                            `resume-${app._id}.pdf`,
+                            app.resumeLink
+                          )
+                        }
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Resume
+                      </Button>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 min-w-[200px]">
                       <span className="font-medium">{getJobTitle(app.jobId)}</span>
