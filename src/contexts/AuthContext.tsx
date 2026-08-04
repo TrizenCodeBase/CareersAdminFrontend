@@ -9,7 +9,7 @@ interface User {
   role: string;
   isActive: boolean;
 }
-
+  
 interface AuthContextType {
   user: User | null;
   token: string | null;
