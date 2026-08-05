@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadFile, getResumeDownloadUrl, cn } from '@/lib/utils';
+import { ResumePreviewDialog } from '@/components/ResumePreviewDialog';
 
 function toDatetimeLocal(value?: string | null): string {
   if (!value) return '';
@@ -107,6 +108,24 @@ interface Application {
   hoursPerWeek?: string;
   workPreference?: string;
   expectations?: string;
+  totalAiExperience?: string;
+  agenticExperience?: string;
+  currentTitle?: string;
+  currentCompany?: string;
+  highestDegree?: string;
+  availabilityToStart?: string;
+  agentFrameworks?: string[];
+  llmPlatforms?: string[];
+  vectorDatabases?: string[];
+  planningApproaches?: string[];
+  cloudPlatform?: string;
+  devopsProficiency?: string;
+  systemExperience?: string;
+  timezone?: string;
+  contractCommitment?: string;
+  expectedMonthlyRate?: string;
+  applicationSource?: string;
+  coverNote?: string;
   appliedBy?: {
     firstName: string;
     lastName: string;
@@ -193,6 +212,7 @@ export default function ApplicationDetail() {
   const [interviewScheduledDate, setInterviewScheduledDate] = useState('');
   const [interviewStatus, setInterviewStatus] = useState('not_scheduled');
   const [interviewRecordingLink, setInterviewRecordingLink] = useState('');
+  const [resumePreviewOpen, setResumePreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !isAdmin) {
@@ -403,6 +423,7 @@ export default function ApplicationDetail() {
 
   const isSocialMediaJob =
     application.jobId === 'TV-MKT-SMM-2025-003' || application.jobId === 'TV-MKT-SMM-2026-003';
+  const isGenAiJob = application.jobId === 'TV-AI-GEN-2026-009';
   const initials = application.fullName
     .split(/\s+/)
     .filter(Boolean)
@@ -494,7 +515,7 @@ export default function ApplicationDetail() {
           </div>
         </div>
 
-        <div className="grid gap-3 border-t border-slate-100 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4 sm:px-6">
+        <div className="grid gap-3 border-t border-slate-100 px-5 py-4 sm:grid-cols-2 lg:grid-cols-5 sm:px-6">
           <a
             href={`mailto:${application.email}`}
             className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60"
@@ -523,6 +544,22 @@ export default function ApplicationDetail() {
             <span>LinkedIn profile</span>
             <ExternalLink className="ml-auto h-3.5 w-3.5 opacity-50" />
           </a>
+          {application.resumeLink ? (
+            <button
+              type="button"
+              onClick={() => setResumePreviewOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60 text-left"
+            >
+              <FileText className="h-4 w-4 text-brand-primary" />
+              <span>View resume</span>
+              <ExternalLink className="ml-auto h-3.5 w-3.5 opacity-50" />
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-400">
+              <FileText className="h-4 w-4" />
+              <span>No resume</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -651,8 +688,12 @@ export default function ApplicationDetail() {
               <Field label="Status">
                 <StatusBadge value={application.status} />
               </Field>
-              <Field label="Expected stipend">{application.expectedStipend}</Field>
-              <Field label="Preferred start">{application.preferredStartDate || '—'}</Field>
+              <Field label={isGenAiJob ? 'Expected rate (₹ / month)' : 'Expected stipend'}>
+                {isGenAiJob ? application.expectedMonthlyRate : application.expectedStipend}
+              </Field>
+              <Field label="Preferred start">
+                {(isGenAiJob ? application.availabilityToStart : application.preferredStartDate) || '—'}
+              </Field>
               <Field label="Applied">
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-slate-400" />
@@ -665,7 +706,98 @@ export default function ApplicationDetail() {
             </dl>
           </Section>
 
-          {!isSocialMediaJob && (
+          {isGenAiJob && (
+            <Section title="GenAI experience & contract fit">
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <Field label="Total AI/ML experience">{application.totalAiExperience}</Field>
+                <Field label="Agentic systems experience">{application.agenticExperience}</Field>
+                <Field label="Current title">{application.currentTitle}</Field>
+                <Field label="Current company">{application.currentCompany}</Field>
+                <Field label="Highest qualification">{application.highestDegree}</Field>
+                <Field label="Cloud platform">{application.cloudPlatform}</Field>
+                <Field label="Docker / K8s / CI-CD">{application.devopsProficiency}</Field>
+                <Field label="Timezone">{application.timezone}</Field>
+                <Field label="3-month commitment">{application.contractCommitment}</Field>
+                <Field label="Source">{application.applicationSource}</Field>
+              </dl>
+
+              {[
+                { label: 'Agent frameworks', values: application.agentFrameworks },
+                { label: 'LLM platforms', values: application.llmPlatforms },
+                { label: 'Vector databases', values: application.vectorDatabases },
+                { label: 'Planning approaches', values: application.planningApproaches },
+              ].map(({ label, values }) =>
+                values && values.length > 0 ? (
+                  <div key={label} className="mt-4">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      {label}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {values.map((value) => (
+                        <Badge key={value} variant="secondary">
+                          {value}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              )}
+
+              {application.systemExperience && (
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    RAG / multi-agent system built
+                  </p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                    {application.systemExperience}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                {application.portfolioUrl && (
+                  <a
+                    href={application.portfolioUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                  >
+                    <Briefcase className="h-3.5 w-3.5" />
+                    GitHub / portfolio
+                    <ExternalLink className="h-3 w-3 opacity-60" />
+                  </a>
+                )}
+                {application.resumeLink && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setResumePreviewOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View resume
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        downloadFile(
+                          getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY),
+                          `resume-${application._id}.pdf`,
+                          application.resumeLink
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download resume
+                    </button>
+                  </>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {!isSocialMediaJob && !isGenAiJob && (
             <Section title="Education & experience">
               <dl className="grid gap-4 sm:grid-cols-2">
                 <Field label="Education status">{application.educationStatus}</Field>
@@ -689,20 +821,30 @@ export default function ApplicationDetail() {
                   </a>
                 )}
                 {application.resumeLink && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      downloadFile(
-                        getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY),
-                        `resume-${application._id}.pdf`,
-                        application.resumeLink
-                      )
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Download resume
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setResumePreviewOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View resume
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        downloadFile(
+                          getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY),
+                          `resume-${application._id}.pdf`,
+                          application.resumeLink
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download resume
+                    </button>
+                  </>
                 )}
               </div>
             </Section>
@@ -759,28 +901,38 @@ export default function ApplicationDetail() {
                   </a>
                 )}
                 {application.resumeLink && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      downloadFile(
-                        getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY),
-                        `resume-${application._id}.pdf`,
-                        application.resumeLink
-                      )
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Download resume
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setResumePreviewOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View resume
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        downloadFile(
+                          getResumeDownloadUrl(application.resumeLink!, API_CONFIG.ENDPOINTS.RESUME_PROXY),
+                          `resume-${application._id}.pdf`,
+                          application.resumeLink
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download resume
+                    </button>
+                  </>
                 )}
               </div>
             </Section>
           )}
 
-          <Section title="Motivation">
+          <Section title={isGenAiJob ? 'Cover note' : 'Motivation'}>
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-              {application.motivation}
+              {(isGenAiJob ? application.coverNote : application.motivation) || '—'}
             </p>
           </Section>
         </div>
@@ -1018,6 +1170,14 @@ export default function ApplicationDetail() {
           </Section>
         </div>
       </div>
+
+      <ResumePreviewDialog
+        open={resumePreviewOpen}
+        onOpenChange={setResumePreviewOpen}
+        resumeLink={application.resumeLink}
+        candidateName={application.fullName}
+        applicationId={application._id}
+      />
     </div>
   );
 }

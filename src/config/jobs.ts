@@ -8,6 +8,7 @@ export interface JobOption {
 export const JOB_TITLES: Record<string, string> = {
   'TV-AIML-INT-2025-001': 'AIML Intern',
   'TV-AIML-INT-2026-001': 'AIML Intern',
+  'TV-AI-GEN-2026-009': 'AI Engineer – GenAI & Multi-Agent Systems (3-Month Contract)',
   'TV-AI-AUT-2026-001': 'Associate AI & Automation Engineer',
   'TV-AI-FS-2026-002': 'AI & Automation Engineer Intern',
   'TV-WEB-MERN-2025-005': 'MERN Stack Developer Intern',
@@ -40,6 +41,7 @@ export function getRoleFamily(jobId?: string | null): string {
   if (jobId.includes('WEB-MERN')) return 'mern';
   if (jobId.includes('AIML-INT')) return 'aiml';
   if (jobId.includes('AI-AUT')) return 'ai-aut';
+  if (jobId.includes('AI-GEN')) return 'ai-gen';
   if (jobId.includes('AI-FS')) return 'ai-fs';
   if (jobId.includes('MKT-SMM')) return 'smm';
   if (jobId.includes('MKT-CSM')) return 'csm';
@@ -62,6 +64,8 @@ export function getRoleFamilyLabel(jobId?: string | null): string {
       return 'AIML Intern';
     case 'ai-aut':
       return 'AI & Automation';
+    case 'ai-gen':
+      return 'GenAI & Multi-Agent';
     case 'ai-fs':
       return 'AI & Automation Intern';
     case 'smm':

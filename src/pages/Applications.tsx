@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Eye, X, Download, CheckCircle2, XCircle, Copy } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadFile, getResumeDownloadUrl } from '@/lib/utils';
+import { ResumePreviewDialog } from '@/components/ResumePreviewDialog';
 
 function slugifyFilename(value: string): string {
   return value
@@ -111,6 +112,7 @@ export default function Applications() {
   const [emailLookup, setEmailLookup] = useState<EmailLookupResult | null>(null);
   const [copiedKind, setCopiedKind] = useState<'found' | 'missing' | 'notInList' | null>(null);
   const [filtersReady, setFiltersReady] = useState(false);
+  const [resumePreview, setResumePreview] = useState<Application | null>(null);
 
   const bulkEmails = useMemo(() => parseBulkEmails(debouncedSearch), [debouncedSearch]);
   const isBulkEmailMode = bulkEmails.length >= 2;
@@ -706,20 +708,30 @@ export default function Applications() {
                   </TableCell>
                   <TableCell>
                     {app.resumeLink ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          downloadFile(
-                            getResumeDownloadUrl(app.resumeLink, API_CONFIG.ENDPOINTS.RESUME_PROXY),
-                            `resume-${app._id}.pdf`,
-                            app.resumeLink
-                          )
-                        }
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Resume
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setResumePreview(app)}
+                        >
+                          <Eye className="h-4 w-4 mr-1.5" />
+                          View
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            downloadFile(
+                              getResumeDownloadUrl(app.resumeLink, API_CONFIG.ENDPOINTS.RESUME_PROXY),
+                              `resume-${app._id}.pdf`,
+                              app.resumeLink
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-1.5" />
+                          Download
+                        </Button>
+                      </div>
                     ) : (
                       '—'
                     )}
@@ -860,6 +872,14 @@ export default function Applications() {
           </div>
         </div>
       )}
+
+      <ResumePreviewDialog
+        open={Boolean(resumePreview)}
+        onOpenChange={(open) => !open && setResumePreview(null)}
+        resumeLink={resumePreview?.resumeLink}
+        candidateName={resumePreview?.fullName}
+        applicationId={resumePreview?._id}
+      />
     </div>
   );
 }

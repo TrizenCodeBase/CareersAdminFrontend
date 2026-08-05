@@ -7,6 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Extract object key from a resume URL (presigned or path). Returns e.g. "resumes/123-file.pdf" or null.
+ * Local disk URLs under /uploads/resumes/ are left alone (returned as null).
  */
 export function extractKeyFromResumeUrl(url: string | undefined): string | null {
   if (!url || typeof url !== 'string') return null;
@@ -15,9 +16,12 @@ export function extractKeyFromResumeUrl(url: string | undefined): string | null 
     const keyParam = u.searchParams.get('key');
     if (keyParam) return decodeURIComponent(keyParam);
     const path = u.pathname || '';
+    // Local disk uploads are served from /uploads/resumes/ — not MinIO
+    if (path.includes('/uploads/resumes/')) return null;
     const match = path.match(/\/resumes\/(.+)$/);
     if (match) return `resumes/${match[1]}`;
   } catch {
+    if (url.includes('/uploads/resumes/')) return null;
     const i = url.indexOf('/resumes/');
     if (i !== -1) return url.substring(i + 1);
   }
@@ -31,6 +35,26 @@ export function getResumeDownloadUrl(resumeLink: string, resumeProxyBase: string
   const key = extractKeyFromResumeUrl(resumeLink);
   if (key) return `${resumeProxyBase}?key=${encodeURIComponent(key)}`;
   return resumeLink;
+}
+
+/**
+ * Resume URL for in-browser viewing (PDF opens in a new tab instead of downloading).
+ */
+export function getResumeViewUrl(resumeLink: string, resumeProxyBase: string): string {
+  const key = extractKeyFromResumeUrl(resumeLink);
+  if (key) {
+    return `${resumeProxyBase}?key=${encodeURIComponent(key)}&disposition=inline`;
+  }
+  return resumeLink;
+}
+
+/**
+ * Open a resume in a new browser tab for viewing.
+ */
+export function viewResume(resumeLink: string | undefined, resumeProxyBase: string): void {
+  if (!resumeLink) return;
+  const url = getResumeViewUrl(resumeLink, resumeProxyBase);
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function triggerBlobDownload(blob: Blob, filename: string) {
