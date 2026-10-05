@@ -126,6 +126,11 @@ interface Application {
   expectedMonthlyRate?: string;
   applicationSource?: string;
   coverNote?: string;
+  fromHackathon?: 'yes' | 'no';
+  hackathonTeamName?: string;
+  hackathonResult?: 'winner' | 'participant';
+  hackathonProblemStatementId?: string;
+  hackathonProblemStatementTitle?: string;
   appliedBy?: {
     firstName: string;
     lastName: string;
@@ -705,6 +710,32 @@ export default function ApplicationDetail() {
               </Field>
             </dl>
           </Section>
+
+          {application.fromHackathon && (
+            <Section title="AI HACK X MRDU hackathon">
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <Field label="Took part">{application.fromHackathon === 'yes' ? 'Yes' : 'No'}</Field>
+                {application.fromHackathon === 'yes' && (
+                  <>
+                    <Field label="Team name">{application.hackathonTeamName}</Field>
+                    <Field label="Result">
+                      {application.hackathonResult === 'winner' ? (
+                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Winner</Badge>
+                      ) : (
+                        'Participant'
+                      )}
+                    </Field>
+                    <Field label="Problem statement">
+                      {application.hackathonProblemStatementTitle}
+                      {application.hackathonProblemStatementId && (
+                        <span className="ml-1 text-slate-400">({application.hackathonProblemStatementId})</span>
+                      )}
+                    </Field>
+                  </>
+                )}
+              </dl>
+            </Section>
+          )}
 
           {isGenAiJob && (
             <Section title="GenAI experience & contract fit">
