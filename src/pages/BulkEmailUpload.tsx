@@ -13,6 +13,7 @@ import {
   Users,
   CheckCircle,
   XCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -374,9 +375,10 @@ Trizen Academy`;
 
   return (
     <div className="space-y-6">
-      <div>
+      {/* Page Header */}
+      <div className="border-b border-gray-100 pb-4">
         <h1 className="text-3xl font-bold text-gray-900">Bulk Email Upload</h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-gray-500 text-sm mt-1">
           Create custom email campaigns with templates and attachments
         </p>
       </div>
@@ -385,13 +387,14 @@ Trizen Academy`;
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+            <FileText className="h-5 w-5 text-gray-500" />
             Email Content
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4 mb-4">
-            <Label className="flex items-center gap-2 cursor-pointer">
+        <CardContent className="space-y-5">
+          {/* HTML Template Toggle */}
+          <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+            <Label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={useHtmlTemplate}
@@ -407,7 +410,7 @@ Trizen Academy`;
                     setEmailSubject("Trizen Update");
                   }
                 }}
-                className="w-4 h-4"
+                className="w-4 h-4 accent-blue-600 rounded"
               />
               <span className="text-sm font-medium text-gray-700">
                 Use Image Email Template with WhatsApp Link
@@ -416,18 +419,19 @@ Trizen Academy`;
           </div>
 
           {useHtmlTemplate && (
-            <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-800 font-bold mb-2">
+            <div className="bg-blue-50 border border-blue-200 ring-1 ring-blue-200 shadow-sm rounded-lg p-4">
+              <p className="text-sm text-blue-800 font-bold mb-1">
                 ✓ Image Email Template Enabled
               </p>
               <p className="text-xs text-blue-700">
-                Upload an image as header logo - it will be displayed with a WhatsApp link below it.
+                Upload an image as header logo — it will be displayed with a WhatsApp link below it.
               </p>
             </div>
           )}
 
+          {/* Email Subject */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Email Subject
             </label>
             <Input
@@ -441,22 +445,23 @@ Trizen Academy`;
             />
           </div>
 
+          {/* Header Logo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Header Logo (optional)
             </label>
 
-            {/* Toggle between URL and file upload */}
-            <div className="flex items-center gap-3 mb-3">
+            {/* Toggle between URL and file upload — segmented button group */}
+            <div className="flex items-center mb-3">
               <button
                 type="button"
                 onClick={() => {
                   setUseHeaderLogoUrl(false);
                   setHeaderLogoUrl("");
                 }}
-                className={`px-3 py-1 text-sm rounded-md border ${!useHeaderLogoUrl
-                  ? "bg-blue-50 border-blue-300 text-blue-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                className={`px-4 py-1.5 text-sm border rounded-l-md focus:outline-none transition-colors ${!useHeaderLogoUrl
+                  ? "bg-blue-50 border-blue-400 text-blue-700 font-medium z-10"
+                  : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
                   }`}
               >
                 Upload File
@@ -467,9 +472,9 @@ Trizen Academy`;
                   setUseHeaderLogoUrl(true);
                   setHeaderLogo(null);
                 }}
-                className={`px-3 py-1 text-sm rounded-md border ${useHeaderLogoUrl
-                  ? "bg-blue-50 border-blue-300 text-blue-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                className={`px-4 py-1.5 text-sm border rounded-r-md -ml-px focus:outline-none transition-colors ${useHeaderLogoUrl
+                  ? "bg-blue-50 border-blue-400 text-blue-700 font-medium z-10"
+                  : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
                   }`}
               >
                 Use URL
@@ -506,9 +511,9 @@ Trizen Academy`;
               </div>
             ) : (
               <div>
-                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-gray-50">
-                  <ImageIcon className="h-4 w-4" />
-                  <span>
+                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                  <ImageIcon className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-700">
                     {headerLogo ? headerLogo.name : "Choose image file"}
                   </span>
                   <input
@@ -535,8 +540,9 @@ Trizen Academy`;
             )}
           </div>
 
+          {/* Email Body */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {useHtmlTemplate ? 'HTML Email Template (Preview)' : 'Email Body (plain text)'}
             </label>
             {useHtmlTemplate ? (
@@ -577,17 +583,18 @@ Trizen Academy`;
             </p>
           </div>
 
+          {/* Attachments */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Attachments (Images, PDFs, Documents)
             </label>
 
             {/* File Upload Option */}
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-gray-50">
-                  <Upload className="h-4 w-4" />
-                  <span>Upload Files (Small files only)</span>
+                <label className="inline-flex flex-col items-center justify-center gap-1 min-h-[60px] px-6 py-3 rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 hover:border-gray-400 transition-colors text-center">
+                  <Upload className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-600">Upload Files (Small files only)</span>
                   <input
                     type="file"
                     multiple
@@ -628,7 +635,8 @@ Trizen Academy`;
             </div>
           </div>
 
-          <div className="flex gap-3">
+          {/* Reset Button */}
+          <div className="flex gap-3 pt-1">
             <Button
               variant="outline"
               onClick={() => {
@@ -638,7 +646,9 @@ Trizen Academy`;
                 setHeaderLogoUrl("");
                 setUseHeaderLogoUrl(false);
               }}
+              className="flex items-center gap-2"
             >
+              <RotateCcw className="h-4 w-4" />
               Reset to Default
             </Button>
           </div>
@@ -649,20 +659,21 @@ Trizen Academy`;
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
+            <Mail className="h-5 w-5 text-gray-500" />
             Upload Excel File
           </CardTitle>
-          <p className="text-sm text-gray-600 mt-2">
-            Required column: <span className="font-medium">email</span> only
+          <p className="text-sm text-gray-500 mt-1">
+            Required column: <span className="font-medium text-gray-700">email</span> only
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center gap-3 flex-wrap">
-            <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 hover:border-brand-primary transition-colors">
-              <Upload className="h-5 w-5 text-gray-600" />
-              <span className="text-gray-700">
-                Choose file (.xlsx, .xls, .csv)
+            <label className="inline-flex flex-col items-center justify-center gap-1.5 min-h-[80px] px-8 rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 hover:border-brand-primary transition-colors text-center">
+              <Upload className="h-6 w-6 text-gray-400" />
+              <span className="text-sm text-gray-700 font-medium">
+                Choose file
               </span>
+              <span className="text-xs text-gray-400">.xlsx, .xls, .csv</span>
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
@@ -693,13 +704,16 @@ Trizen Academy`;
 
           {rows.length > 0 && (
             <>
-              <div className="border rounded-md p-4 bg-blue-50">
+              <div className="border border-emerald-200 rounded-lg p-4 bg-emerald-50">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      File parsed successfully
-                    </p>
-                    <p className="text-sm text-gray-600">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                      <p className="text-sm font-semibold text-gray-900">
+                        File parsed successfully
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-600 pl-6">
                       {rows.length} email{rows.length !== 1 ? "s" : ""} ready to
                       send
                     </p>
@@ -707,6 +721,7 @@ Trizen Academy`;
                   <Button
                     onClick={handleSendAll}
                     disabled={sending || uploading}
+                    size="default"
                     className="flex items-center gap-2"
                   >
                     <Mail className="h-4 w-4" />
@@ -741,20 +756,21 @@ Trizen Academy`;
           )}
 
           {sendSummary && (
-            <div className="border rounded-md p-4 space-y-3">
-              <p className="font-medium text-gray-900">Send Summary</p>
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="border-t border-gray-100 -mx-4 mb-4" />
+              <p className="font-semibold text-gray-900">Send Summary</p>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-green-50 rounded-md">
-                  <p className="text-2xl font-bold text-green-600">
+                <div className="p-4 bg-green-50 rounded-xl border border-green-100">
+                  <p className="text-3xl font-bold text-green-600">
                     {sendSummary.success}
                   </p>
-                  <p className="text-sm text-green-700">Successfully sent</p>
+                  <p className="text-sm text-green-700 mt-0.5">Successfully sent</p>
                 </div>
-                <div className="p-3 bg-red-50 rounded-md">
-                  <p className="text-2xl font-bold text-red-600">
+                <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+                  <p className="text-3xl font-bold text-red-600">
                     {sendSummary.failed}
                   </p>
-                  <p className="text-sm text-red-700">Failed</p>
+                  <p className="text-sm text-red-700 mt-0.5">Failed</p>
                 </div>
               </div>
               {sendSummary.errors.length > 0 && (
@@ -778,25 +794,25 @@ Trizen Academy`;
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
+            <History className="h-5 w-5 text-gray-500" />
             Email History
           </CardTitle>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-gray-500 mt-1">
             Track all your sent email campaigns
           </p>
         </CardHeader>
         <CardContent>
           {emailHistory.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-12">
               <History className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-              <p>No email history yet. Sent emails will appear here.</p>
+              <p className="text-gray-500 text-sm">No email history yet. Sent emails will appear here.</p>
             </div>
           ) : (
             <div className="space-y-4">
               {emailHistory.map((entry) => (
                 <div
                   key={entry.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  className="border rounded-lg p-4 shadow-sm ring-1 ring-gray-100 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -805,7 +821,7 @@ Trizen Academy`;
                           {entry.subject}
                         </h3>
                         {entry.isHtml && (
-                          <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                          <span className="px-2 py-0.5 text-xs bg-violet-100 text-violet-700 rounded-full font-medium">
                             HTML
                           </span>
                         )}
@@ -827,14 +843,14 @@ Trizen Academy`;
                       <div className="text-right">
                         <div className="flex items-center gap-1 text-green-600">
                           <CheckCircle className="h-4 w-4" />
-                          <span className="font-semibold">
+                          <span className="font-bold">
                             {entry.successCount}
                           </span>
                         </div>
                         {entry.failedCount > 0 && (
                           <div className="flex items-center gap-1 text-red-600">
                             <XCircle className="h-4 w-4" />
-                            <span className="font-semibold">
+                            <span className="font-bold">
                               {entry.failedCount}
                             </span>
                           </div>
@@ -1000,12 +1016,13 @@ Trizen Academy`;
         </CardContent>
       </Card>
 
+      {/* Instructions */}
       <Card>
         <CardHeader>
           <CardTitle>Instructions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-gray-600">
-          <ol className="list-decimal pl-5 space-y-2">
+          <ol className="list-decimal pl-6 space-y-3">
             <li>
               <strong>Customize your email:</strong> Set the subject line, add a
               plain-text body, and optionally attach a header logo image
@@ -1020,7 +1037,7 @@ Trizen Academy`;
             </li>
             <li>
               <strong>Fill recipients:</strong> Add one email address per row in
-              the <span className="font-medium">email</span> column
+              the <span className="font-medium text-gray-800">email</span> column
             </li>
             <li>
               <strong>Upload:</strong> Upload the completed Excel file
@@ -1030,9 +1047,9 @@ Trizen Academy`;
               to dispatch emails
             </li>
           </ol>
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-sm font-medium text-blue-800">✨ Features:</p>
-            <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc pl-5">
+          <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+            <p className="text-sm font-semibold text-indigo-800 mb-2">✨ Features:</p>
+            <ul className="text-sm text-indigo-700 space-y-1 list-disc pl-5">
               <li>Custom HTML email templates</li>
               <li>File attachments (images, PDFs, documents)</li>
               <li>Live preview before sending</li>
@@ -1040,8 +1057,8 @@ Trizen Academy`;
               <li>Default Trizen Academy branding template included</li>
             </ul>
           </div>
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-            <p className="text-sm font-medium text-yellow-800">⚠️ Important:</p>
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm font-semibold text-yellow-800 mb-1">⚠️ Important:</p>
             <p className="text-sm text-yellow-700 mt-1">
               All recipients will receive the same email with the same
               attachments. Make sure your content and recipient list are correct

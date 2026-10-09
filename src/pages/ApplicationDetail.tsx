@@ -32,6 +32,8 @@ import {
   Video,
   Download,
   Eye,
+  Loader2,
+  ChevronRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadFile, getResumeDownloadUrl, cn } from '@/lib/utils';
@@ -144,7 +146,7 @@ function StatusBadge({ value }: { value: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
+        'inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold tracking-wide',
         APPLICATION_STATUS_STYLES[value] || 'bg-gray-50 text-gray-700 border-gray-200'
       )}
     >
@@ -158,7 +160,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="space-y-1">
       <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
-      <dd className="text-sm text-slate-800 break-words">{children}</dd>
+      <dd className="text-sm text-slate-800 break-words leading-relaxed">{children}</dd>
     </div>
   );
 }
@@ -177,7 +179,7 @@ function Section({
   className?: string;
 }) {
   return (
-    <section className={cn('rounded-2xl border border-slate-200/80 bg-white shadow-sm', className)}>
+    <section className={cn('rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-gray-100', className)}>
       <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <div>
           <h2 className="text-base font-semibold text-brand-primary">{title}</h2>
@@ -409,17 +411,25 @@ export default function ApplicationDetail() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="text-sm text-slate-500">Loading application…</div>
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-primary opacity-70" />
+        <p className="text-sm font-medium text-slate-500">Loading application…</p>
       </div>
     );
   }
 
   if (!application) {
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3">
-        <p className="text-sm text-red-600">Application not found</p>
-        <Button variant="outline" onClick={() => navigate(backToApplications)}>
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+          <FileText className="h-6 w-6 text-red-400" />
+        </div>
+        <div className="text-center">
+          <p className="text-base font-semibold text-gray-900">Application not found</p>
+          <p className="mt-1 text-sm text-slate-500">This record may have been removed or the link is invalid.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate(backToApplications)}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to applications
         </Button>
       </div>
@@ -448,55 +458,59 @@ export default function ApplicationDetail() {
   const roleFamilyLabel = getRoleFamilyLabel(application.jobId);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-10">
+    <div className="mx-auto max-w-6xl space-y-6 pb-12">
       {/* Hero */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="bg-gradient-to-r from-brand-primary to-[#023e8a] px-5 py-5 text-white sm:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-gray-100">
+        <div className="bg-gradient-to-r from-brand-primary to-[#023e8a] px-5 py-6 text-white sm:px-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate(backToApplications)}
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                className="shrink-0 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
               >
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ArrowLeft className="mr-1.5 h-4 w-4" />
                 Back
               </Button>
               <div className="flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-semibold tracking-wide">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold tracking-wide ring-2 ring-white/30">
                   {initials || 'TV'}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                  <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                     {application.fullName}
                   </h1>
-                  <p className="mt-1 text-sm text-white/80">{getJobTitle(application.jobId)}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-white/70">
-                    <span className="rounded-full bg-white/10 px-2 py-0.5">{application.jobId}</span>
-                    <span>·</span>
-                    <span>
-                      {relatedApplications.length} role
-                      {relatedApplications.length !== 1 ? 's' : ''} applied
+                  <p className="mt-1 text-sm font-medium text-white/80">{getJobTitle(application.jobId)}</p>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                    <StatusBadge value={application.status} />
+                    <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-white/80">
+                      {application.jobId}
+                    </span>
+                    <span className="text-xs text-white/60">·</span>
+                    <span className="text-xs text-white/70">
+                      {relatedApplications.length} role{relatedApplications.length !== 1 ? 's' : ''} applied
                     </span>
                     {hasReappliedSameRole && (
                       <>
-                        <span>·</span>
-                        <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-amber-50">
+                        <span className="text-xs text-white/60">·</span>
+                        <span className="rounded-full bg-amber-400/25 px-2.5 py-0.5 text-xs font-medium text-amber-50 ring-1 ring-amber-300/30">
                           Applied to {roleFamilyLabel} before
                         </span>
                       </>
                     )}
-                    <span>·</span>
-                    <span>Applied {format(new Date(application.createdAt), 'MMM d, yyyy')}</span>
+                    <span className="text-xs text-white/60">·</span>
+                    <span className="text-xs text-white/70">
+                      Applied {format(new Date(application.createdAt), 'MMM d, yyyy')}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 p-2 backdrop-blur-sm">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 p-2.5 backdrop-blur-sm">
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-9 w-40 border-white/20 bg-white text-slate-900">
+                <SelectTrigger className="h-9 w-44 border-white/20 bg-white text-slate-900 font-medium text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -511,41 +525,46 @@ export default function ApplicationDetail() {
                 size="sm"
                 onClick={() => handleStatusUpdate(application._id, status, true)}
                 disabled={saving || status === application.status}
-                className="bg-white text-brand-primary hover:bg-brand-accent"
+                className="bg-white font-semibold text-brand-primary hover:bg-brand-accent disabled:opacity-50"
               >
-                <Save className="mr-2 h-4 w-4" />
+                {saving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
                 {saving ? 'Saving…' : 'Save status'}
               </Button>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-3 border-t border-slate-100 px-5 py-4 sm:grid-cols-2 lg:grid-cols-5 sm:px-6">
+        {/* Contact bar */}
+        <div className="grid gap-2.5 border-t border-slate-100 px-5 py-4 sm:grid-cols-2 lg:grid-cols-5 sm:px-6">
           <a
             href={`mailto:${application.email}`}
-            className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60"
+            className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60 hover:text-brand-primary"
           >
-            <Mail className="h-4 w-4 text-brand-primary" />
+            <Mail className="h-4 w-4 shrink-0 text-brand-primary" />
             <span className="truncate">{application.email}</span>
           </a>
           <a
             href={`tel:${application.phone}`}
-            className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60"
+            className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60 hover:text-brand-primary"
           >
-            <Phone className="h-4 w-4 text-brand-primary" />
+            <Phone className="h-4 w-4 shrink-0 text-brand-primary" />
             <span>{application.phone}</span>
           </a>
           <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
-            <MapPin className="h-4 w-4 text-brand-primary" />
+            <MapPin className="h-4 w-4 shrink-0 text-brand-primary" />
             <span className="truncate">{application.location}</span>
           </div>
           <a
             href={application.linkedinProfile}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60"
+            className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60 hover:text-brand-primary"
           >
-            <Linkedin className="h-4 w-4 text-brand-primary" />
+            <Linkedin className="h-4 w-4 shrink-0 text-brand-primary" />
             <span>LinkedIn profile</span>
             <ExternalLink className="ml-auto h-3.5 w-3.5 opacity-50" />
           </a>
@@ -553,15 +572,15 @@ export default function ApplicationDetail() {
             <button
               type="button"
               onClick={() => setResumePreviewOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60 text-left"
+              className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-accent/60 hover:text-brand-primary text-left"
             >
-              <FileText className="h-4 w-4 text-brand-primary" />
+              <FileText className="h-4 w-4 shrink-0 text-brand-primary" />
               <span>View resume</span>
               <ExternalLink className="ml-auto h-3.5 w-3.5 opacity-50" />
             </button>
           ) : (
             <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-400">
-              <FileText className="h-4 w-4" />
+              <FileText className="h-4 w-4 shrink-0" />
               <span>No resume</span>
             </div>
           )}
@@ -580,7 +599,8 @@ export default function ApplicationDetail() {
             {previousSameRoleApps.length !== 1 ? 's' : ''}), and has applied again.
             <ul className="mt-2 space-y-1 text-amber-900/80">
               {previousSameRoleApps.map((app) => (
-                <li key={app._id}>
+                <li key={app._id} className="flex items-center gap-1.5">
+                  <ChevronRight className="h-3.5 w-3.5 opacity-50 shrink-0" />
                   <Link
                     to={`/applications/${app._id}`}
                     state={location.state}
@@ -617,9 +637,9 @@ export default function ApplicationDetail() {
                 )}
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0 space-y-1">
+                  <div className="min-w-0 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-slate-900">{getJobTitle(app.jobId)}</p>
+                      <p className="font-semibold text-slate-900">{getJobTitle(app.jobId)}</p>
                       {isCurrent && (
                         <Badge className="bg-brand-primary text-white hover:bg-brand-primary">
                           Viewing
@@ -649,7 +669,7 @@ export default function ApplicationDetail() {
                         setRelatedStatusDrafts((prev) => ({ ...prev, [app._id]: value }))
                       }
                     >
-                      <SelectTrigger className="h-9 w-36 bg-white">
+                      <SelectTrigger className="h-9 w-36 bg-white text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -666,12 +686,15 @@ export default function ApplicationDetail() {
                       disabled={savingRelatedId === app._id || draft === app.status}
                       onClick={() => handleStatusUpdate(app._id, draft, isCurrent)}
                     >
+                      {savingRelatedId === app._id ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : null}
                       {savingRelatedId === app._id ? 'Saving…' : 'Update'}
                     </Button>
                     {!isCurrent && (
                       <Link to={`/applications/${app._id}`} state={location.state}>
-                        <Button size="sm" variant="ghost">
-                          <Eye className="mr-1 h-4 w-4" />
+                        <Button size="sm" variant="ghost" className="gap-1">
+                          <Eye className="h-4 w-4" />
                           Open
                         </Button>
                       </Link>
@@ -765,7 +788,7 @@ export default function ApplicationDetail() {
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {values.map((value) => (
-                        <Badge key={value} variant="secondary">
+                        <Badge key={value} variant="secondary" className="px-2.5 py-0.5">
                           {value}
                         </Badge>
                       ))}
@@ -791,7 +814,7 @@ export default function ApplicationDetail() {
                     href={application.portfolioUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                   >
                     <Briefcase className="h-3.5 w-3.5" />
                     GitHub / portfolio
@@ -803,7 +826,7 @@ export default function ApplicationDetail() {
                     <button
                       type="button"
                       onClick={() => setResumePreviewOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       View resume
@@ -817,7 +840,7 @@ export default function ApplicationDetail() {
                           application.resumeLink
                         )
                       }
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                     >
                       <Download className="h-3.5 w-3.5" />
                       Download resume
@@ -844,7 +867,7 @@ export default function ApplicationDetail() {
                     href={application.portfolioUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                   >
                     <Briefcase className="h-3.5 w-3.5" />
                     Portfolio
@@ -856,7 +879,7 @@ export default function ApplicationDetail() {
                     <button
                       type="button"
                       onClick={() => setResumePreviewOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       View resume
@@ -870,7 +893,7 @@ export default function ApplicationDetail() {
                           application.resumeLink
                         )
                       }
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                     >
                       <Download className="h-3.5 w-3.5" />
                       Download resume
@@ -898,7 +921,7 @@ export default function ApplicationDetail() {
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {application.socialMediaPlatforms.map((platform) => (
-                      <Badge key={platform} variant="secondary">
+                      <Badge key={platform} variant="secondary" className="px-2.5 py-0.5">
                         {platform}
                       </Badge>
                     ))}
@@ -912,7 +935,7 @@ export default function ApplicationDetail() {
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {application.contentCreationSkills.map((skill) => (
-                      <Badge key={skill} variant="secondary">
+                      <Badge key={skill} variant="secondary" className="px-2.5 py-0.5">
                         {skill}
                       </Badge>
                     ))}
@@ -925,7 +948,7 @@ export default function ApplicationDetail() {
                     href={application.portfolioWorkSamples}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                   >
                     Portfolio samples
                     <ExternalLink className="h-3 w-3 opacity-60" />
@@ -936,7 +959,7 @@ export default function ApplicationDetail() {
                     <button
                       type="button"
                       onClick={() => setResumePreviewOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       View resume
@@ -950,7 +973,7 @@ export default function ApplicationDetail() {
                           application.resumeLink
                         )
                       }
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-accent transition"
                     >
                       <Download className="h-3.5 w-3.5" />
                       Download resume
@@ -974,19 +997,23 @@ export default function ApplicationDetail() {
             title="Hiring tracker"
             description="Assignment & interview pipeline for this candidate"
             action={
-              <Button size="sm" onClick={handleSaveNotes} disabled={savingNotes}>
-                <Save className="mr-2 h-4 w-4" />
+              <Button size="sm" onClick={handleSaveNotes} disabled={savingNotes} className="gap-1.5">
+                {savingNotes ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 {savingNotes ? 'Saving…' : 'Save'}
               </Button>
             }
           >
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <div className="space-y-5">
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   Candidate
                 </label>
-                <p className="text-sm font-medium text-slate-900">{application.fullName}</p>
-                <p className="text-xs text-slate-500">{application.email}</p>
+                <p className="text-sm font-semibold text-slate-900">{application.fullName}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{application.email}</p>
                 <p className="text-xs text-slate-500">{application.phone}</p>
               </div>
 
@@ -998,7 +1025,7 @@ export default function ApplicationDetail() {
                   value={source || 'unset'}
                   onValueChange={(value) => setSource(value === 'unset' ? '' : value)}
                 >
-                  <SelectTrigger className="bg-white">
+                  <SelectTrigger className="bg-white text-sm">
                     <SelectValue placeholder="Select source" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1020,26 +1047,26 @@ export default function ApplicationDetail() {
                   value={githubPortfolio}
                   onChange={(e) => setGithubPortfolio(e.target.value)}
                   placeholder="https://github.com/… or portfolio URL"
-                  className="bg-white"
+                  className="bg-white text-sm"
                 />
               </div>
 
-              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-                <label className="flex items-center gap-2 text-sm text-slate-800">
+              <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                <label className="flex items-center gap-2.5 text-sm text-slate-800 cursor-pointer select-none">
                   <Checkbox
                     checked={assignmentSent}
                     onChange={(e) => setAssignmentSent(e.target.checked)}
                   />
                   Assignment sent
                 </label>
-                <label className="flex items-center gap-2 text-sm text-slate-800">
+                <label className="flex items-center gap-2.5 text-sm text-slate-800 cursor-pointer select-none">
                   <Checkbox
                     checked={assignmentReceived}
                     onChange={(e) => setAssignmentReceived(e.target.checked)}
                   />
                   Assignment received
                 </label>
-                <label className="flex items-center gap-2 text-sm text-slate-800">
+                <label className="flex items-center gap-2.5 text-sm text-slate-800 cursor-pointer select-none">
                   <Checkbox
                     checked={interviewLinkSent}
                     onChange={(e) => setInterviewLinkSent(e.target.checked)}
@@ -1056,7 +1083,7 @@ export default function ApplicationDetail() {
                   type="datetime-local"
                   value={interviewScheduledDate}
                   onChange={(e) => setInterviewScheduledDate(e.target.value)}
-                  className="bg-white"
+                  className="bg-white text-sm"
                 />
               </div>
 
@@ -1065,7 +1092,7 @@ export default function ApplicationDetail() {
                   Interview status
                 </label>
                 <Select value={interviewStatus} onValueChange={setInterviewStatus}>
-                  <SelectTrigger className="bg-white">
+                  <SelectTrigger className="bg-white text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1086,7 +1113,7 @@ export default function ApplicationDetail() {
                   value={interviewRecordingLink}
                   onChange={(e) => setInterviewRecordingLink(e.target.value)}
                   placeholder="https://…"
-                  className="bg-white"
+                  className="bg-white text-sm"
                 />
               </div>
 
@@ -1096,7 +1123,7 @@ export default function ApplicationDetail() {
                   Remarks
                 </label>
                 <Textarea
-                  className="min-h-[100px] resize-y rounded-xl border-slate-200 bg-white focus-visible:ring-brand-primary"
+                  className="min-h-[110px] resize-y rounded-xl border-amber-200 bg-amber-50 text-sm text-slate-800 placeholder:text-amber-400/70 focus-visible:ring-amber-300"
                   placeholder="Interview notes, feedback, next steps…"
                   value={adminRemarks}
                   onChange={(e) => setAdminRemarks(e.target.value)}
@@ -1109,71 +1136,85 @@ export default function ApplicationDetail() {
             title="Extra recordings"
             description="Additional interview / call recordings"
             action={
-              <Button size="sm" variant="outline" onClick={handleSaveNotes} disabled={savingNotes}>
-                <Save className="mr-2 h-4 w-4" />
+              <Button size="sm" variant="outline" onClick={handleSaveNotes} disabled={savingNotes} className="gap-1.5">
+                {savingNotes ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 {savingNotes ? 'Saving…' : 'Save'}
               </Button>
             }
           >
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
-                <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                   <Video className="h-3.5 w-3.5" />
                   Recordings
                 </label>
 
                 {recordings.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-6 text-center text-sm text-slate-400">
-                    No recordings yet
-                  </p>
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-8 text-center">
+                    <Video className="mb-2 h-6 w-6 text-slate-300" />
+                    <p className="text-sm text-slate-400">No recordings yet</p>
+                  </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {recordings.map((recording, index) => (
                       <div
                         key={`${recording.url}-${index}`}
-                        className="rounded-xl border border-slate-200 bg-slate-50/80 p-3"
+                        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-gray-50"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-900">
-                              {recording.label || `Recording ${index + 1}`}
-                            </p>
-                            <a
-                              href={recording.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-1 inline-flex items-center gap-1 break-all text-xs text-blue-600 hover:underline"
-                            >
-                              {recording.url}
-                              <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                            {recording.note && (
-                              <p className="mt-1 whitespace-pre-wrap text-xs text-slate-600">
-                                {recording.note}
-                              </p>
-                            )}
+                        <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50 px-3 py-2">
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-primary/10">
+                            <Video className="h-3.5 w-3.5 text-brand-primary" />
                           </div>
+                          <p className="flex-1 text-sm font-semibold text-slate-800 truncate">
+                            {recording.label || `Recording ${index + 1}`}
+                          </p>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 shrink-0 p-0 text-slate-400 hover:text-red-600"
+                            className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
                             onClick={() => removeRecording(index)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
+                        </div>
+                        <div className="px-3 py-2.5">
+                          <a
+                            href={recording.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 break-all text-xs text-blue-600 hover:underline"
+                          >
+                            {recording.url}
+                            <ExternalLink className="h-3 w-3 shrink-0 ml-0.5" />
+                          </a>
+                          {recording.note && (
+                            <p className="mt-1.5 whitespace-pre-wrap text-xs text-slate-600 leading-relaxed">
+                              {recording.note}
+                            </p>
+                          )}
+                          {recording.createdAt && (
+                            <p className="mt-1.5 text-[10px] text-slate-400">
+                              Added {format(new Date(recording.createdAt), 'MMM d, yyyy')}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                <div className="mt-3 space-y-2 rounded-xl border border-dashed border-slate-200 p-3">
+                <div className="mt-3 space-y-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/40 p-3.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Add recording</p>
                   <Input
-                    placeholder="Recording URL"
+                    placeholder="Recording URL *"
                     value={newRecording.url}
                     onChange={(e) => setNewRecording((prev) => ({ ...prev, url: e.target.value }))}
-                    className="bg-white"
+                    className="bg-white text-sm"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <Input
@@ -1182,17 +1223,17 @@ export default function ApplicationDetail() {
                       onChange={(e) =>
                         setNewRecording((prev) => ({ ...prev, label: e.target.value }))
                       }
-                      className="bg-white"
+                      className="bg-white text-sm"
                     />
                     <Input
                       placeholder="Note"
                       value={newRecording.note}
                       onChange={(e) => setNewRecording((prev) => ({ ...prev, note: e.target.value }))}
-                      className="bg-white"
+                      className="bg-white text-sm"
                     />
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={addRecording}>
-                    <Plus className="mr-1 h-4 w-4" />
+                  <Button type="button" variant="outline" size="sm" onClick={addRecording} className="gap-1.5">
+                    <Plus className="h-4 w-4" />
                     Add recording
                   </Button>
                 </div>

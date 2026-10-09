@@ -50,25 +50,39 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Admin Login</CardTitle>
-          <CardDescription className="text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
+      {/* Page-level branding above the card */}
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Trizen Careers</h1>
+        <p className="mt-1 text-sm text-gray-500">Admin Panel</p>
+      </div>
+
+      <Card className="w-full max-w-md shadow-lg border border-gray-100 overflow-hidden">
+        {/* Top accent bar */}
+        <div className="h-1 w-full bg-primary" />
+
+        <CardHeader className="space-y-1 pt-6 pb-4 px-6">
+          <CardTitle className="text-xl font-semibold text-center text-gray-900">
+            Sign in to your account
+          </CardTitle>
+          <CardDescription className="text-center text-gray-500 text-sm">
             Enter your credentials to access the admin panel
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+
+        <CardContent className="px-6 pb-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-                <AlertCircle className="h-4 w-4" />
+              <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 border-l-4 border-l-red-500 rounded-lg text-red-700 text-sm">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -77,11 +91,14 @@ export default function Login() {
                 required
                 placeholder="Enter your email"
                 disabled={loading}
+                className="h-10 focus-visible:ring-primary"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -90,11 +107,16 @@ export default function Login() {
                 required
                 placeholder="Enter your password"
                 disabled={loading}
+                className="h-10 focus-visible:ring-primary"
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+            <Button
+              type="submit"
+              className="w-full h-11 font-semibold tracking-wide mt-1"
+              disabled={loading}
+            >
+              {loading ? 'Signing in…' : 'Sign In'}
             </Button>
           </form>
         </CardContent>
@@ -102,4 +124,3 @@ export default function Login() {
     </div>
   );
 }
-

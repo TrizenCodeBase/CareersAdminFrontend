@@ -23,6 +23,9 @@ export const JOB_TITLES: Record<string, string> = {
   'TV-MKT-CSM-2026-004': 'Content & Social Media Executive',
   'TV-MKT-GMI-2026-005': 'Growth Marketing Intern',
   'TV-MKT-CSMI-2026-006': 'Content & Social Media Intern',
+  'TV-SLS-BDE-2026-009': 'Business Development Executive – IT Services',
+  'TV-SLS-HOT-2026-010': 'Telecalling & Outreach Intern',
+  'TV-MKT-SDMH-2026-011': 'Social Media & Digital Marketing Intern – Healthcare',
 };
 
 export const JOB_OPTIONS: JobOption[] = Object.entries(JOB_TITLES).map(([id, title]) => ({
@@ -44,8 +47,10 @@ export function getRoleFamily(jobId?: string | null): string {
   if (jobId.includes('AI-GEN')) return 'ai-gen';
   if (jobId.includes('AI-FS')) return 'ai-fs';
   if (jobId.includes('MKT-SMM')) return 'smm';
-  if (jobId.includes('MKT-CSM')) return 'csm';
+  if (jobId.includes('MKT-CSM') || jobId.includes('MKT-SDMH')) return 'csm';
   if (jobId.includes('MKT-GM')) return 'growth';
+  if (jobId.includes('SLS-BDE')) return 'bde';
+  if (jobId.includes('SLS-HOT')) return 'hot';
   return jobId;
 }
 
@@ -74,6 +79,10 @@ export function getRoleFamilyLabel(jobId?: string | null): string {
       return 'Content & Social Media';
     case 'growth':
       return 'Growth Marketing';
+    case 'bde':
+      return 'Business Development';
+    case 'hot':
+      return 'Telecalling & Outreach';
     default:
       return getJobTitle(jobId);
   }

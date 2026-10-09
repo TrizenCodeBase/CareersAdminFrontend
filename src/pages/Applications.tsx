@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, X, Download, CheckCircle2, XCircle, Copy } from 'lucide-react';
+import { Search, Eye, X, Download, CheckCircle2, XCircle, Copy, Loader2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadFile, getResumeDownloadUrl } from '@/lib/utils';
 import { ResumePreviewDialog } from '@/components/ResumePreviewDialog';
@@ -465,7 +465,7 @@ export default function Applications() {
           <SelectTrigger className="w-full lg:w-80">
             <SelectValue placeholder="Job Role" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-80 overflow-y-auto">
             <SelectItem value="all">All Roles</SelectItem>
             {JOB_OPTIONS.map((job) => (
               <SelectItem key={job.id} value={job.id}>
