@@ -1,17 +1,31 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, FileText, User, Mail, Upload } from 'lucide-react';
+import { LogOut, LayoutDashboard, FileText, User, Mail, Upload, ChevronRight } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
+}
+
+/** Derive a human-readable page title from a pathname segment */
+function segmentLabel(segment: string): string {
+  return segment
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function Layout({ children }: LayoutProps) {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -53,19 +67,29 @@ export default function Layout({ children }: LayoutProps) {
     ? user.firstName.charAt(0).toUpperCase()
     : '?';
 
+  // Build breadcrumb segments from pathname
+  const segments = location.pathname.split('/').filter(Boolean);
+
+  const formattedDate = now.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 shadow-[2px_0_8px_0_rgba(0,0,0,0.04)] flex flex-col">
 
-        {/* Brand area */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-          <div className="h-8 w-8 rounded-lg bg-brand-primary flex items-center justify-center shrink-0">
-            <span className="text-white text-sm font-bold leading-none">T</span>
+        {/* Brand area — subtle gradient */}
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100 bg-gradient-to-br from-[#03045E] to-[#0077B6]">
+          <div className="h-8 w-8 rounded-lg bg-white ring-1 ring-white/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden p-1">
+            <img src="https://community.trizenventures.com/assets/trizen-mark-DU5BltTz.png" alt="Trizen Logo" className="h-full w-full object-contain" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900 leading-tight">Trizen Careers</p>
-            <p className="text-[11px] text-gray-400 leading-tight mt-0.5">Admin Panel</p>
+            <p className="text-sm font-semibold text-white leading-tight">Trizen Careers</p>
+            <p className="text-[11px] text-blue-200 leading-tight mt-0.5">Admin Panel</p>
           </div>
         </div>
 
@@ -98,19 +122,57 @@ export default function Layout({ children }: LayoutProps) {
               </p>
               <p className="text-[11px] text-gray-400 leading-tight mt-0.5">Administrator</p>
             </div>
-            <button
-              onClick={handleLogout}
-              title="Logout"
-              className="shrink-0 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors duration-150"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+            {/* Logout button with tooltip */}
+            <div className="relative group/logout shrink-0">
+              <button
+                onClick={handleLogout}
+                title="Logout"
+                className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors duration-150"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-gray-800 text-white text-[11px] whitespace-nowrap opacity-0 group-hover/logout:opacity-100 transition-opacity duration-150 shadow-md">
+                Logout
+              </span>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
       <div className="ml-64 min-h-screen">
+
+        {/* Top navigation bar */}
+        <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between px-6 h-14">
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-1 text-sm text-gray-500">
+              <span className="text-gray-400">Home</span>
+              {segments.map((seg, idx) => (
+                <span key={idx} className="flex items-center gap-1">
+                  <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
+                  <span className={idx === segments.length - 1 ? 'font-semibold text-[#03045E]' : 'text-gray-500'}>
+                    {segmentLabel(seg)}
+                  </span>
+                </span>
+              ))}
+            </nav>
+
+            {/* Right side — date + admin name */}
+            <div className="flex items-center gap-4">
+              <span className="hidden sm:block text-xs text-gray-400 font-medium">{formattedDate}</span>
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-full bg-brand-primary/10 flex items-center justify-center">
+                  <span className="text-brand-primary text-xs font-bold leading-none">{userInitial}</span>
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  {user?.firstName} {user?.lastName}
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
         {/* Page Content */}
         <main className="p-6">
           {children}

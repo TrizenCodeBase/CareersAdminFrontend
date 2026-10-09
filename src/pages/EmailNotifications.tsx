@@ -42,7 +42,6 @@ export default function EmailNotifications() {
     }
 
     fetchApplications();
-    // Clear selections when filter changes
     setSelectedApplications(new Set());
   }, [isAuthenticated, isAdmin, navigate, statusFilter]);
 
@@ -51,7 +50,7 @@ export default function EmailNotifications() {
     try {
       const params = new URLSearchParams({
         status: statusFilter,
-        limit: '100', // Get more applications for email sending
+        limit: '100',
       });
 
       const url = `${API_CONFIG.ENDPOINTS.APPLICATIONS}?${params}`;
@@ -63,7 +62,6 @@ export default function EmailNotifications() {
       });
 
       if (response.status === 401) {
-        // Token expired or invalid - logout and redirect to login
         logout();
         navigate('/login');
         return;
@@ -92,9 +90,6 @@ export default function EmailNotifications() {
     setSendingEmails(prev => new Set(prev).add(applicationId));
 
     try {
-      // Map status to correct endpoint
-      // 'accepted' status -> send acceptance email
-      // 'rejected' status -> send rejection email
       const endpoint = status === 'accepted' 
         ? `${API_CONFIG.ENDPOINTS.APPLICATIONS}/${applicationId}/send-acceptance-email`
         : `${API_CONFIG.ENDPOINTS.APPLICATIONS}/${applicationId}/send-rejection-email`;
@@ -108,7 +103,6 @@ export default function EmailNotifications() {
       });
 
       if (response.status === 401) {
-        // Token expired or invalid - logout and redirect to login
         logout();
         navigate('/login');
         return;
@@ -117,7 +111,6 @@ export default function EmailNotifications() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Refresh applications to get updated emailSent status from database
         await fetchApplications();
         alert(`Email sent successfully!`);
       } else {
@@ -154,7 +147,6 @@ export default function EmailNotifications() {
     return <Badge>{status}</Badge>;
   };
 
-  // Get applications that can be selected (not already sent)
   const getSelectableApplications = () => {
     return applications.filter(app => {
       const emailAlreadySent = app.emailSent && 
@@ -190,7 +182,6 @@ export default function EmailNotifications() {
     });
   };
 
-  // SelectAllCheckbox component with indeterminate state support
   const SelectAllCheckbox = ({ checked, indeterminate, onChange }: { 
     checked: boolean; 
     indeterminate: boolean; 
@@ -214,277 +205,283 @@ export default function EmailNotifications() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <Loader2 className="h-9 w-9 animate-spin text-gray-400" />
-        <p className="text-sm text-gray-500 font-medium">Loading applications…</p>
-      </div>
-    );
-  }
+  const pendingCount = getSelectableApplications().length;
 
   return (
-    <div className="space-y-6 px-1">
+    <div className="space-y-6 px-1 relative min-h-screen pb-24">
       {/* Page Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Email Notifications</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Send acceptance or rejection emails to candidates</p>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="h-1.5 w-full bg-gradient-to-r from-primary to-[#0077b6]" />
+        <div className="px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-accent text-primary rounded-xl shrink-0">
+              <Mail className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">Email Notifications</h1>
+              <p className="text-sm text-gray-500 mt-1">Send acceptance or rejection emails to candidates</p>
+            </div>
+          </div>
+          <Badge className="bg-accent text-primary hover:bg-accent/80 text-sm px-3 py-1 font-semibold border-0 ring-1 ring-primary/10 hidden sm:inline-flex">
+            {pendingCount} Pending Emails
+          </Badge>
         </div>
       </div>
 
       {/* Inline Filter Bar */}
-      <div className="flex items-center gap-4 px-4 py-3 bg-white rounded-xl border border-gray-200 shadow-sm">
-        <label className="text-sm font-medium text-gray-600 shrink-0">Filter by status:</label>
-        <Select value={statusFilter} onValueChange={(value: 'accepted' | 'rejected') => setStatusFilter(value)}>
-          <SelectTrigger className="w-44 h-8 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="accepted">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                Accepted
-              </div>
-            </SelectItem>
-            <SelectItem value="rejected">
-              <div className="flex items-center gap-2">
-                <XCircle className="h-4 w-4 text-red-600" />
-                Rejected
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-gray-500">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-5 py-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+        <span className="text-sm font-medium text-gray-600 shrink-0">Filter by status:</span>
+        <div className="flex p-1 bg-slate-100 rounded-lg">
+          <button
+            onClick={() => setStatusFilter('accepted')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${
+              statusFilter === 'accepted' 
+                ? 'bg-white text-green-700 shadow-sm ring-1 ring-black/5' 
+                : 'text-gray-500 hover:text-gray-700 hover:bg-slate-200/50'
+            }`}
+          >
+            <CheckCircle className={`h-4 w-4 ${statusFilter === 'accepted' ? 'text-green-600' : 'text-gray-400'}`} /> 
+            Accepted
+          </button>
+          <button
+            onClick={() => setStatusFilter('rejected')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${
+              statusFilter === 'rejected' 
+                ? 'bg-white text-red-700 shadow-sm ring-1 ring-black/5' 
+                : 'text-gray-500 hover:text-gray-700 hover:bg-slate-200/50'
+            }`}
+          >
+            <XCircle className={`h-4 w-4 ${statusFilter === 'rejected' ? 'text-red-600' : 'text-gray-400'}`} /> 
+            Rejected
+          </button>
+        </div>
+        <div className="text-sm text-gray-500 sm:ml-auto">
           <span className="font-semibold text-gray-700">{applications.length}</span>{' '}
           {statusFilter === 'accepted' ? 'accepted' : 'rejected'} application{applications.length !== 1 ? 's' : ''}
-        </span>
+        </div>
       </div>
 
-      {/* Applications Table */}
-      <Card className="shadow-sm ring-1 ring-gray-100 overflow-hidden">
-        <CardHeader className="border-b border-gray-100 px-6 py-4">
-          <CardTitle className="text-base font-semibold text-gray-800">
-            {statusFilter === 'accepted' ? 'Accepted' : 'Rejected'} Applications
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50 hover:bg-gray-50">
-                  <TableHead className="w-12 px-4 py-3">
-                    <SelectAllCheckbox
-                      checked={allSelected}
-                      indeterminate={someSelected && !allSelected}
-                      onChange={(checked) => handleSelectAll(checked)}
-                    />
-                  </TableHead>
-                  <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Name</TableHead>
-                  <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Email</TableHead>
-                  <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Phone</TableHead>
-                  <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Job Role</TableHead>
-                  <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</TableHead>
-                  <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Applied Date</TableHead>
-                  <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {applications.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-16">
-                      <div className="flex flex-col items-center justify-center gap-3 text-gray-400">
-                        <Mail className="h-10 w-10 opacity-40" />
-                        <p className="text-sm font-medium text-gray-500">
-                          No {statusFilter} applications found
-                        </p>
-                      </div>
-                    </TableCell>
+      {loading ? (
+        <div className="space-y-4">
+           {[...Array(5)].map((_, i) => (
+             <div key={i} className="skeleton h-16 w-full rounded-xl" />
+           ))}
+        </div>
+      ) : (
+        <Card className="shadow-sm ring-1 ring-gray-100 overflow-hidden border-0">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-gray-200">
+                    <TableHead className="w-12 px-4 py-3 sticky top-0 z-[5] bg-slate-50">
+                      <SelectAllCheckbox
+                        checked={allSelected}
+                        indeterminate={someSelected && !allSelected}
+                        onChange={(checked) => handleSelectAll(checked)}
+                      />
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 sticky top-0 z-[5] bg-slate-50">Name</TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 sticky top-0 z-[5] bg-slate-50">Email</TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 sticky top-0 z-[5] bg-slate-50">Phone</TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 sticky top-0 z-[5] bg-slate-50">Job Role</TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 sticky top-0 z-[5] bg-slate-50">Status</TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 sticky top-0 z-[5] bg-slate-50">Applied Date</TableHead>
+                    <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 text-right sticky top-0 z-[5] bg-slate-50">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  applications.map((app, index) => {
-                    const isSending = sendingEmails.has(app._id);
-                    const emailAlreadySent = app.emailSent && 
-                      app.emailType === (statusFilter === 'accepted' ? 'acceptance' : 'rejection') &&
-                      app.status === statusFilter;
-                    const isSelectable = !emailAlreadySent;
-                    const isSelected = selectedApplications.has(app._id);
+                </TableHeader>
+                <TableBody>
+                  {applications.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="py-20 text-center">
+                        <div className="inline-flex flex-col items-center justify-center gap-3">
+                          <div className="p-4 bg-slate-50 rounded-full">
+                            <Mail className="h-8 w-8 text-slate-300" />
+                          </div>
+                          <p className="text-sm font-medium text-gray-500">
+                            No {statusFilter} applications found
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    applications.map((app, index) => {
+                      const isSending = sendingEmails.has(app._id);
+                      const emailAlreadySent = app.emailSent && 
+                        app.emailType === (statusFilter === 'accepted' ? 'acceptance' : 'rejection') &&
+                        app.status === statusFilter;
+                      const isSelectable = !emailAlreadySent;
+                      const isSelected = selectedApplications.has(app._id);
 
-                    return (
-                      <TableRow
-                        key={app._id}
-                        className={`transition-colors ${index % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'} hover:bg-blue-50/40`}
-                      >
-                        <TableCell className="px-4 py-3">
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={(e) => handleSelectOne(app._id, e.target.checked)}
-                            disabled={!isSelectable || isSending}
-                            aria-label={`Select ${app.fullName}`}
-                          />
-                        </TableCell>
-                        <TableCell className="px-4 py-3 font-medium text-gray-900 text-sm">{app.fullName}</TableCell>
-                        <TableCell className="px-4 py-3 text-sm">
-                          <a href={`mailto:${app.email}`} className="text-blue-600 hover:underline">
-                            {app.email}
-                          </a>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-sm">
-                          <a href={`tel:${app.phone}`} className="text-blue-600 hover:underline">
-                            {app.phone}
-                          </a>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-gray-700">{getJobTitle(app.jobId)}</TableCell>
-                        <TableCell className="px-4 py-3">{getStatusBadge(app.status)}</TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-gray-600">
-                          {format(new Date(app.createdAt), 'MMM dd, yyyy')}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-right">
-                          {(() => {
-                            // Check if email was already sent for this status
-                            const emailAlreadySent = app.emailSent && 
-                              app.emailType === (statusFilter === 'accepted' ? 'acceptance' : 'rejection') &&
-                              app.status === statusFilter;
-                            const isCurrentlySending = sendingEmails.has(app._id);
-                            
-                            if (emailAlreadySent && !isCurrentlySending) {
+                      return (
+                        <TableRow
+                          key={app._id}
+                          className={`transition-colors duration-150 border-b border-gray-100 hover:bg-accent/20 ${index % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'}`}
+                        >
+                          <TableCell className="px-4 py-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onChange={(e) => handleSelectOne(app._id, e.target.checked)}
+                              disabled={!isSelectable || isSending}
+                              aria-label={`Select ${app.fullName}`}
+                            />
+                          </TableCell>
+                          <TableCell className="px-4 py-3 font-semibold text-gray-900 text-sm">{app.fullName}</TableCell>
+                          <TableCell className="px-4 py-3 text-sm">
+                            <a href={`mailto:${app.email}`} className="text-blue-600 hover:underline">
+                              {app.email}
+                            </a>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm">
+                            <a href={`tel:${app.phone}`} className="text-blue-600 hover:underline">
+                              {app.phone}
+                            </a>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm font-medium text-gray-700">{getJobTitle(app.jobId)}</TableCell>
+                          <TableCell className="px-4 py-3">{getStatusBadge(app.status)}</TableCell>
+                          <TableCell className="px-4 py-3 text-sm text-gray-600">
+                            {format(new Date(app.createdAt), 'MMM dd, yyyy')}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-right">
+                            {(() => {
+                              if (emailAlreadySent && !isSending) {
+                                return (
+                                  <div className="flex flex-col items-end gap-1">
+                                    <Badge className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 hover:bg-green-50 px-2.5 py-1 rounded-full text-xs font-semibold">
+                                      <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                                      Email Sent
+                                    </Badge>
+                                    {app.emailSentAt && (
+                                      <span className="text-[11px] font-medium text-gray-400">
+                                        {format(new Date(app.emailSentAt), 'MMM dd, yyyy')}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              
+                              const buttonColorClass = statusFilter === 'accepted' 
+                                ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm' 
+                                : 'bg-red-600 hover:bg-red-700 text-white shadow-sm';
+
                               return (
-                                <Badge className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 hover:bg-green-50 px-2.5 py-1 rounded-full text-xs font-medium">
-                                  <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                                  Email Sent
-                                  {app.emailSentAt && (
-                                    <span className="text-green-500 font-normal">
-                                      · {format(new Date(app.emailSentAt), 'MMM dd')}
-                                    </span>
+                                <Button
+                                  onClick={() => sendEmail(app._id, statusFilter)}
+                                  disabled={isSending}
+                                  size="sm"
+                                  className={`h-8 px-4 text-xs font-semibold inline-flex items-center gap-2 transition-all ${buttonColorClass}`}
+                                >
+                                  {isSending ? (
+                                    <>
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      Sending…
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Mail className="h-3.5 w-3.5" />
+                                      Send {statusFilter === 'accepted' ? 'Acceptance' : 'Rejection'}
+                                    </>
                                   )}
-                                </Badge>
+                                </Button>
                               );
-                            }
-                            
-                            return (
-                              <Button
-                                onClick={() => sendEmail(app._id, statusFilter)}
-                                disabled={isCurrentlySending}
-                                size="sm"
-                                className={`h-8 px-3 text-xs font-medium inline-flex items-center gap-1.5 ${statusFilter === 'accepted' ? 'bg-green-600 hover:bg-green-700 active:bg-green-800' : 'bg-red-600 hover:bg-red-700 active:bg-red-800'}`}
-                              >
-                                {isCurrentlySending ? (
-                                  <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Sending…
-                                  </>
-                                ) : (
-                                  <>
-                                    <Mail className="h-3.5 w-3.5" />
-                                    Send {statusFilter === 'accepted' ? 'Acceptance' : 'Rejection'}
-                                  </>
-                                )}
-                              </Button>
-                            );
-                          })()}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Bulk Actions Card */}
-      {applications.length > 0 && (
-        <Card className="bg-blue-50 border border-blue-200 shadow-sm ring-0">
-          <CardHeader className="border-b border-blue-100 px-6 py-4">
-            <div className="flex items-center gap-3">
-              <CardTitle className="text-base font-semibold text-blue-900">Bulk Actions</CardTitle>
-              {selectedApplications.size > 0 && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-600 text-white">
-                  {selectedApplications.size} selected
-                </span>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="px-6 py-4">
-            <div className="flex items-center gap-3 flex-wrap">
-              {selectedApplications.size > 0 ? (
-                <Button
-                  onClick={async () => {
-                    const selectedApps = applications.filter(app => selectedApplications.has(app._id));
-                    
-                    if (selectedApps.length === 0) {
-                      alert('No applications selected!');
-                      return;
-                    }
-
-                    if (!confirm(`Send ${statusFilter} emails to ${selectedApps.length} selected candidate(s)?`)) {
-                      return;
-                    }
-
-                    for (const app of selectedApps) {
-                      await sendEmail(app._id, statusFilter);
-                      // Small delay between emails
-                      await new Promise(resolve => setTimeout(resolve, 500));
-                    }
-                    
-                    // Clear selections and refresh applications after bulk send
-                    setSelectedApplications(new Set());
-                    await fetchApplications();
-                  }}
-                  variant="default"
-                  disabled={sendingEmails.size > 0}
-                  className={`h-9 px-4 text-sm font-medium inline-flex items-center gap-2 ${statusFilter === 'accepted' ? 'bg-green-600 hover:bg-green-700 active:bg-green-800' : 'bg-red-600 hover:bg-red-700 active:bg-red-800'}`}
-                >
-                  <Mail className="h-4 w-4" />
-                  Send to Selected ({selectedApplications.size})
-                </Button>
-              ) : null}
-              <Button
-                onClick={async () => {
-                  // Filter applications that haven't had this type of email sent yet
-                  const unsentApplications = applications.filter(app => {
-                    const emailAlreadySent = app.emailSent && 
-                      app.emailType === (statusFilter === 'accepted' ? 'acceptance' : 'rejection') &&
-                      app.status === statusFilter;
-                    return !emailAlreadySent;
-                  });
-                  
-                  if (unsentApplications.length === 0) {
-                    alert('All emails have already been sent!');
-                    return;
-                  }
-
-                  if (!confirm(`Send ${statusFilter} emails to ${unsentApplications.length} candidate(s)?`)) {
-                    return;
-                  }
-
-                  for (const app of unsentApplications) {
-                    await sendEmail(app._id, statusFilter);
-                    // Small delay between emails
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                  }
-                  
-                  // Refresh applications after bulk send
-                  await fetchApplications();
-                }}
-                variant="outline"
-                disabled={sendingEmails.size > 0}
-                className="h-9 px-4 text-sm font-medium inline-flex items-center gap-2 border-blue-300 text-blue-800 bg-white hover:bg-blue-100"
-              >
-                <Mail className="h-4 w-4" />
-                Send All {statusFilter === 'accepted' ? 'Acceptance' : 'Rejection'} Emails
-              </Button>
-              <div className="ml-auto text-sm text-blue-700 font-medium">
-                {applications.filter(app => 
-                  app.emailSent && 
-                  app.emailType === (statusFilter === 'accepted' ? 'acceptance' : 'rejection') &&
-                  app.status === statusFilter
-                ).length} of {applications.length} emails sent
-              </div>
+                            })()}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Sticky Bottom Action Bar */}
+      {selectedApplications.size > 0 ? (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 ml-32 z-50 animate-in slide-in-from-bottom-5">
+          <div className="bg-white rounded-full shadow-2xl border border-gray-200 px-6 py-3 flex items-center gap-6 ring-1 ring-black/5">
+            <span className="text-sm font-semibold text-gray-800">
+              <span className="text-primary mr-1.5">{selectedApplications.size}</span>
+              candidate{selectedApplications.size !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedApplications(new Set())}
+                className="text-gray-500 hover:text-gray-700 font-medium rounded-full"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  const selectedApps = applications.filter(app => selectedApplications.has(app._id));
+                  if (!confirm(`Send ${statusFilter} emails to ${selectedApps.length} selected candidate(s)?`)) return;
+
+                  for (const app of selectedApps) {
+                    await sendEmail(app._id, statusFilter);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                  }
+                  
+                  setSelectedApplications(new Set());
+                  await fetchApplications();
+                }}
+                disabled={sendingEmails.size > 0}
+                size="default"
+                className={`rounded-full shadow-md font-semibold px-6 gap-2 ${
+                  statusFilter === 'accepted' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                <Mail className="h-4 w-4" />
+                Send to Selected
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        applications.length > 0 && !loading && (
+          <Card className="bg-slate-50 border border-slate-200 shadow-sm mt-6">
+            <CardContent className="px-6 py-4">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Bulk Actions</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Send emails to all pending candidates at once.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-600 font-medium">
+                    {applications.length - pendingCount} of {applications.length} emails sent
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      const unsentApplications = getSelectableApplications();
+                      
+                      if (unsentApplications.length === 0) {
+                        alert('All emails have already been sent!');
+                        return;
+                      }
+
+                      if (!confirm(`Send ${statusFilter} emails to ${unsentApplications.length} candidate(s)?`)) return;
+
+                      for (const app of unsentApplications) {
+                        await sendEmail(app._id, statusFilter);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                      }
+                      
+                      await fetchApplications();
+                    }}
+                    variant="outline"
+                    disabled={sendingEmails.size > 0 || pendingCount === 0}
+                    className="font-semibold shadow-sm border-gray-300 gap-2"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Send All {statusFilter === 'accepted' ? 'Acceptance' : 'Rejection'} Emails
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
       )}
     </div>
   );

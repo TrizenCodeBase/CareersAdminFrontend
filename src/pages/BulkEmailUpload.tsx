@@ -14,6 +14,7 @@ import {
   CheckCircle,
   XCircle,
   RotateCcw,
+  Check,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -120,6 +121,10 @@ Trizen Academy`;
 
   // Load email history from localStorage on mount
   useEffect(() => {
+    if (!isAuthenticated || !isAdmin) {
+      navigate('/login');
+      return;
+    }
     const stored = localStorage.getItem("bulk-email-history");
     if (stored) {
       try {
@@ -128,7 +133,7 @@ Trizen Academy`;
         console.error("Failed to load email history:", e);
       }
     }
-  }, []);
+  }, [isAuthenticated, isAdmin, navigate]);
 
   // Save email history to localStorage
   const saveEmailHistory = (history: EmailHistory) => {
@@ -238,22 +243,20 @@ Trizen Academy`;
 
       // Add header logo - either as URL or base64 file
       if (useHeaderLogoUrl && headerLogoUrl.trim()) {
-        // Use URL for header logo (best for Gmail compatibility)
         attachmentData.unshift({
-          filename: "header-logo.png", // Required for detection, but won't be used as attachment
+          filename: "header-logo.png",
           url: headerLogoUrl.trim(),
-          contentType: "image/jpeg", // Default, can be detected from URL
+          contentType: "image/jpeg",
         });
       } else if (headerLogo) {
-        // Use uploaded file (base64)
         attachmentData.unshift({
-          filename: "header-logo.png", // Fixed: Always use this name for proper header detection
+          filename: "header-logo.png",
           content: (await fileToBase64(headerLogo)).split(",")[1],
           contentType: headerLogo.type || "image/png",
         });
       }
 
-      // Add URL-based attachments (for large files)
+      // Add URL-based attachments
       if (attachmentUrls.trim()) {
         const urls = attachmentUrls
           .split("\n")
@@ -265,7 +268,6 @@ Trizen Academy`;
           const ext = filename.split(".").pop()?.toLowerCase() || "";
           let contentType = "application/octet-stream";
 
-          // Detect content type from extension
           if (["jpg", "jpeg"].includes(ext)) contentType = "image/jpeg";
           else if (ext === "png") contentType = "image/png";
           else if (ext === "gif") contentType = "image/gif";
@@ -286,11 +288,9 @@ Trizen Academy`;
       return;
     }
 
-    // Send custom email with template and attachments
     const sendOne = async (row: UploadRow) => {
       const endpoint = `${API_CONFIG.EMAIL_SERVICE.BASE_URL}/api/support/send-custom`;
 
-      // Use HTML template if enabled, otherwise use plain text
       const messageBody = useHtmlTemplate
         ? generateHtmlEmailTemplate()
         : emailBody;
@@ -300,7 +300,7 @@ Trizen Academy`;
         clientName: "Student",
         subject: emailSubject,
         message: messageBody,
-        isHtml: useHtmlTemplate, // Enable HTML mode
+        isHtml: useHtmlTemplate,
         attachments: attachmentData,
       };
 
@@ -344,7 +344,6 @@ Trizen Academy`;
     await Promise.all(tasks);
     setSendSummary({ success, failed, errors });
 
-    // Save to history
     const historyEntry: EmailHistory = {
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
@@ -373,700 +372,452 @@ Trizen Academy`;
     XLSX.writeFile(workbook, "email-upload-template.xlsx");
   };
 
+  const getStepStatus = () => {
+    if (sending) return 3;
+    if (sendSummary) return 4;
+    if (rows.length > 0) return 2;
+    return 1;
+  };
+
+  const currentStep = getStepStatus();
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-8 pb-12">
       {/* Page Header */}
-      <div className="border-b border-gray-100 pb-4">
-        <h1 className="text-3xl font-bold text-gray-900">Bulk Email Upload</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Create custom email campaigns with templates and attachments
-        </p>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="h-1.5 w-full bg-gradient-to-r from-primary to-[#0077b6]" />
+        <div className="px-6 py-6 sm:py-8">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 bg-accent text-primary rounded-xl shrink-0">
+              <Mail className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Bulk Email Campaign</h1>
+              <p className="text-sm text-gray-500 mt-1">Design and send custom email campaigns with attachments.</p>
+            </div>
+          </div>
+          
+          {/* Progress Indicator */}
+          <div className="flex flex-col sm:flex-row justify-between gap-4">
+            <div className={`flex items-center gap-3 ${currentStep >= 1 ? 'text-primary' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${currentStep >= 1 ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                {currentStep > 1 ? <Check className="w-5 h-5" /> : '1'}
+              </div>
+              <span className="font-semibold text-sm">Compose</span>
+            </div>
+            <div className="hidden sm:block flex-1 h-[2px] bg-gray-100 mt-4 mx-4">
+              <div className={`h-full bg-primary transition-all duration-500 ${currentStep >= 2 ? 'w-full' : 'w-0'}`} />
+            </div>
+            <div className={`flex items-center gap-3 ${currentStep >= 2 ? 'text-primary' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${currentStep >= 2 ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                {currentStep > 2 ? <Check className="w-5 h-5" /> : '2'}
+              </div>
+              <span className="font-semibold text-sm">Upload List</span>
+            </div>
+            <div className="hidden sm:block flex-1 h-[2px] bg-gray-100 mt-4 mx-4">
+               <div className={`h-full bg-primary transition-all duration-500 ${currentStep >= 3 ? 'w-full' : 'w-0'}`} />
+            </div>
+            <div className={`flex items-center gap-3 ${currentStep >= 3 ? 'text-primary' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${currentStep >= 3 ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                {currentStep > 3 ? <Check className="w-5 h-5" /> : '3'}
+              </div>
+              <span className="font-semibold text-sm">Send</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Email Content */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-gray-500" />
-            Email Content
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {/* HTML Template Toggle */}
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-            <Label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useHtmlTemplate}
-                onChange={(e) => {
-                  setUseHtmlTemplate(e.target.checked);
-                  if (e.target.checked) {
-                    // Auto-generate HTML template when enabled
-                    setEmailBody(generateHtmlEmailTemplate());
-                    setEmailSubject("Trizen Academy - Academic Projects");
-                  } else {
-                    // Reset to plain text template
-                    setEmailBody(generateEmailTemplate());
-                    setEmailSubject("Trizen Update");
-                  }
-                }}
-                className="w-4 h-4 accent-blue-600 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                Use Image Email Template with WhatsApp Link
-              </span>
-            </Label>
-          </div>
-
-          {useHtmlTemplate && (
-            <div className="bg-blue-50 border border-blue-200 ring-1 ring-blue-200 shadow-sm rounded-lg p-4">
-              <p className="text-sm text-blue-800 font-bold mb-1">
-                ✓ Image Email Template Enabled
-              </p>
-              <p className="text-xs text-blue-700">
-                Upload an image as header logo — it will be displayed with a WhatsApp link below it.
-              </p>
-            </div>
-          )}
-
-          {/* Email Subject */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email Subject
-            </label>
-            <Input
-              type="text"
-              value={emailSubject}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setEmailSubject(e.target.value)
-              }
-              placeholder="Enter email subject line"
-              className="w-full"
-            />
-          </div>
-
-          {/* Header Logo */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Header Logo (optional)
-            </label>
-
-            {/* Toggle between URL and file upload — segmented button group */}
-            <div className="flex items-center mb-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setUseHeaderLogoUrl(false);
-                  setHeaderLogoUrl("");
-                }}
-                className={`px-4 py-1.5 text-sm border rounded-l-md focus:outline-none transition-colors ${!useHeaderLogoUrl
-                  ? "bg-blue-50 border-blue-400 text-blue-700 font-medium z-10"
-                  : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
-                  }`}
-              >
-                Upload File
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setUseHeaderLogoUrl(true);
-                  setHeaderLogo(null);
-                }}
-                className={`px-4 py-1.5 text-sm border rounded-r-md -ml-px focus:outline-none transition-colors ${useHeaderLogoUrl
-                  ? "bg-blue-50 border-blue-400 text-blue-700 font-medium z-10"
-                  : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
-                  }`}
-              >
-                Use URL
-              </button>
-            </div>
-
-            {useHeaderLogoUrl ? (
-              <div className="space-y-2">
-                <Input
-                  type="url"
-                  value={headerLogoUrl}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setHeaderLogoUrl(e.target.value)
-                  }
-                  placeholder="https://logo.llp.trizenventures.com/logo.jpg"
-                  className="w-full"
-                />
-                {headerLogoUrl && (
-                  <div className="mt-2 p-2 bg-gray-50 rounded-md border">
-                    <img
-                      src={headerLogoUrl}
-                      alt="Header logo preview"
-                      className="max-w-full h-auto max-h-32 object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
-                <p className="text-xs text-gray-500">
-                  Enter the full URL to your header logo image. Recommended for
-                  Gmail compatibility.
-                </p>
-              </div>
-            ) : (
-              <div>
-                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 hover:border-gray-400 transition-colors">
-                  <ImageIcon className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">
-                    {headerLogo ? headerLogo.name : "Choose image file"}
-                  </span>
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          {/* Email Content */}
+          <Card className="border-0 shadow-sm ring-1 ring-gray-100 overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b border-gray-100 px-6 py-4 flex flex-row items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">1</div>
+              <CardTitle className="text-lg">Compose Email</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6 p-6">
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 transition-colors hover:border-primary/20">
+                <Label className="flex items-center gap-3 cursor-pointer">
                   <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => setHeaderLogo(e.target.files?.[0] || null)}
+                    type="checkbox"
+                    checked={useHtmlTemplate}
+                    onChange={(e) => {
+                      setUseHtmlTemplate(e.target.checked);
+                      if (e.target.checked) {
+                        setEmailBody(generateHtmlEmailTemplate());
+                        setEmailSubject("Trizen Academy - Academic Projects");
+                      } else {
+                        setEmailBody(generateEmailTemplate());
+                        setEmailSubject("Trizen Update");
+                      }
+                    }}
+                    className="w-4 h-4 accent-primary rounded border-gray-300"
                   />
+                  <span className="font-medium text-gray-800">
+                    Use Pre-built HTML Template (with WhatsApp CTA)
+                  </span>
+                </Label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Email Subject</label>
+                <Input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="Enter email subject line"
+                  className="bg-white focus-visible:ring-primary/30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Header Logo (optional)
                 </label>
-                {headerLogo && (
-                  <div className="mt-2 p-2 bg-gray-50 rounded-md border">
-                    <img
-                      src={URL.createObjectURL(headerLogo)}
-                      alt="Header logo preview"
-                      className="max-w-full h-auto max-h-32 object-contain"
+                <div className="flex items-center mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseHeaderLogoUrl(false);
+                      setHeaderLogoUrl("");
+                    }}
+                    className={`px-4 py-2 text-sm font-medium border rounded-l-lg transition-colors ${!useHeaderLogoUrl
+                      ? "bg-accent border-primary/20 text-primary z-10"
+                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    Upload File
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseHeaderLogoUrl(true);
+                      setHeaderLogo(null);
+                    }}
+                    className={`px-4 py-2 text-sm font-medium border rounded-r-lg -ml-px transition-colors ${useHeaderLogoUrl
+                      ? "bg-accent border-primary/20 text-primary z-10"
+                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    Use URL
+                  </button>
+                </div>
+
+                {useHeaderLogoUrl ? (
+                  <div className="space-y-3">
+                    <Input
+                      type="url"
+                      value={headerLogoUrl}
+                      onChange={(e) => setHeaderLogoUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="bg-white focus-visible:ring-primary/30"
                     />
+                    {headerLogoUrl && (
+                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-center">
+                        <img
+                          src={headerLogoUrl}
+                          alt="Header logo preview"
+                          className="max-h-24 object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-gray-200 cursor-pointer hover:bg-slate-50 hover:border-primary/40 transition-colors">
+                      <ImageIcon className="h-5 w-5 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-700">
+                        {headerLogo ? headerLogo.name : "Choose an image file..."}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => setHeaderLogo(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {headerLogo && (
+                      <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-center">
+                        <img
+                          src={URL.createObjectURL(headerLogo)}
+                          alt="Header logo preview"
+                          className="max-h-24 object-contain"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Upload an image file. For best Gmail compatibility, use URL
-                  instead.
-                </p>
               </div>
-            )}
-          </div>
 
-          {/* Email Body */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {useHtmlTemplate ? 'HTML Email Template (Preview)' : 'Email Body (plain text)'}
-            </label>
-            {useHtmlTemplate ? (
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <p className="text-sm text-gray-600 mb-2">
-                  <strong className="text-blue-600">Simple Professional HTML Template:</strong> Clean, text-based email
-                  with project information, deliverables list, and contact details. Includes a simple download button linking to
-                  <strong className="ml-1">Domain Selection Page</strong>.
-                </p>
-                <p className="text-xs text-gray-500 mb-3">
-                  Professional and straightforward design. You can customize the HTML below if needed.
-                </p>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  {useHtmlTemplate ? 'HTML Content' : 'Email Body (Plain Text)'}
+                </label>
                 <Textarea
                   value={emailBody}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    setEmailBody(e.target.value)
-                  }
-                  placeholder="HTML email template"
-                  rows={20}
-                  className="w-full font-mono text-sm"
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  placeholder="Message body..."
+                  rows={useHtmlTemplate ? 16 : 12}
+                  className="w-full font-mono text-sm bg-white focus-visible:ring-primary/30 resize-y"
                 />
               </div>
-            ) : (
-              <Textarea
-                value={emailBody}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  setEmailBody(e.target.value)
-                }
-                placeholder="Write the email body in plain text"
-                rows={12}
-                className="w-full font-mono text-sm"
-              />
-            )}
-            <p className="text-xs text-gray-500 mt-1">
-              {useHtmlTemplate
-                ? 'HTML template with download button. Customize as needed.'
-                : 'Plain text only. Add links as full URLs (e.g., https://example.com).'}
-            </p>
-          </div>
 
-          {/* Attachments */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Attachments (Images, PDFs, Documents)
-            </label>
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  Attachments
+                </label>
+                <div className="space-y-4">
+                  <label className="flex flex-col items-center justify-center gap-2 min-h-[100px] rounded-xl border-2 border-dashed border-gray-200 bg-slate-50 cursor-pointer hover:bg-slate-100 hover:border-primary/30 transition-colors">
+                    <Upload className="h-6 w-6 text-primary/60" />
+                    <span className="text-sm font-medium text-gray-700">Click to upload small files</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={(e) => setAttachments(Array.from(e.target.files || []))}
+                      className="hidden"
+                    />
+                  </label>
+                  {attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {attachments.map((f, i) => (
+                        <div key={i} className="px-3 py-1.5 bg-accent/50 text-primary text-xs font-medium rounded-lg border border-primary/10">
+                          {f.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className="pt-2">
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      Or paste URLs to externally hosted files (one per line)
+                    </label>
+                    <Textarea
+                      value={attachmentUrls}
+                      onChange={(e) => setAttachmentUrls(e.target.value)}
+                      placeholder="https://..."
+                      rows={2}
+                      className="font-mono text-xs focus-visible:ring-primary/30 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
 
-            {/* File Upload Option */}
-            <div className="space-y-3">
+              <div className="pt-2">
+                <Button variant="ghost" onClick={() => {
+                  setEmailBody(DEFAULT_EMAIL_BODY);
+                  setEmailSubject("Trizen Update");
+                  setHeaderLogo(null);
+                  setHeaderLogoUrl("");
+                  setUseHeaderLogoUrl(false);
+                }} className="text-gray-500 hover:text-gray-900 gap-2 font-medium">
+                  <RotateCcw className="h-4 w-4" /> Reset Form
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recipient List Upload */}
+          <Card className="border-0 shadow-sm ring-1 ring-gray-100 overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b border-gray-100 px-6 py-4 flex flex-row items-center justify-between">
               <div className="flex items-center gap-3">
-                <label className="inline-flex flex-col items-center justify-center gap-1 min-h-[60px] px-6 py-3 rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 hover:border-gray-400 transition-colors text-center">
-                  <Upload className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">Upload Files (Small files only)</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={(e) =>
-                      setAttachments(Array.from(e.target.files || []))
-                    }
-                    className="hidden"
-                  />
-                </label>
-                {attachments.length > 0 && (
-                  <div className="text-sm text-gray-600">
-                    {attachments.length} file(s) selected:{" "}
-                    {attachments.map((f) => f.name).join(", ")}
-                  </div>
-                )}
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">2</div>
+                <CardTitle className="text-lg">Recipients List</CardTitle>
               </div>
-
-              {/* URL Option for Large Files */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Or paste URLs to hosted files (Recommended for large files)
-                </label>
-                <Textarea
-                  value={attachmentUrls}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    setAttachmentUrls(e.target.value)
-                  }
-                  placeholder={`Paste URLs, one per line:\nhttps://example.com/brochure.pdf\nhttps://example.com/syllabus.pdf`}
-                  rows={3}
-                  className="w-full font-mono text-sm"
+              <Button variant="outline" size="sm" onClick={handleDownloadTemplate} className="gap-2 bg-white">
+                <Download className="h-4 w-4" /> Template
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-6 p-6">
+              <label className="flex flex-col items-center justify-center gap-3 min-h-[140px] rounded-xl border-2 border-dashed border-primary/20 bg-accent/10 cursor-pointer hover:bg-accent/30 hover:border-primary/40 transition-colors">
+                <div className="p-3 bg-white rounded-full shadow-sm">
+                  <FileText className="h-6 w-6 text-primary" />
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-bold text-primary block">Upload Excel/CSV File</span>
+                  <span className="text-xs font-medium text-gray-500 mt-1">Requires a column named 'email'</span>
+                </div>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFile(file);
+                    e.target.value = "";
+                  }}
                 />
-                <p className="text-xs text-gray-500">
-                  💡 For large files (&gt;5MB), upload to your server and paste
-                  URLs here to avoid email size limits.
-                </p>
-              </div>
-            </div>
-          </div>
+              </label>
 
-          {/* Reset Button */}
-          <div className="flex gap-3 pt-1">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEmailBody(DEFAULT_EMAIL_BODY);
-                setEmailSubject("Trizen Update");
-                setHeaderLogo(null);
-                setHeaderLogoUrl("");
-                setUseHeaderLogoUrl(false);
-              }}
-              className="flex items-center gap-2"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset to Default
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recipient List Upload */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-gray-500" />
-            Upload Excel File
-          </CardTitle>
-          <p className="text-sm text-gray-500 mt-1">
-            Required column: <span className="font-medium text-gray-700">email</span> only
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-3 flex-wrap">
-            <label className="inline-flex flex-col items-center justify-center gap-1.5 min-h-[80px] px-8 rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 hover:border-brand-primary transition-colors text-center">
-              <Upload className="h-6 w-6 text-gray-400" />
-              <span className="text-sm text-gray-700 font-medium">
-                Choose file
-              </span>
-              <span className="text-xs text-gray-400">.xlsx, .xls, .csv</span>
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFile(file);
-                  e.target.value = ""; // Reset input
-                }}
-              />
-            </label>
-            <Button
-              variant="outline"
-              onClick={handleDownloadTemplate}
-              className="flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download Template
-            </Button>
-          </div>
-
-          {uploadError && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600 font-medium">Error</p>
-              <p className="text-sm text-red-600">{uploadError}</p>
-            </div>
-          )}
-
-          {rows.length > 0 && (
-            <>
-              <div className="border border-emerald-200 rounded-lg p-4 bg-emerald-50">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <CheckCircle className="h-4 w-4 text-emerald-600" />
-                      <p className="text-sm font-semibold text-gray-900">
-                        File parsed successfully
-                      </p>
-                    </div>
-                    <p className="text-sm text-gray-600 pl-6">
-                      {rows.length} email{rows.length !== 1 ? "s" : ""} ready to
-                      send
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handleSendAll}
-                    disabled={sending || uploading}
-                    size="default"
-                    className="flex items-center gap-2"
-                  >
-                    <Mail className="h-4 w-4" />
-                    {sending
-                      ? "Sending..."
-                      : `Send ${rows.length} email${rows.length !== 1 ? "s" : ""
-                      }`}
-                  </Button>
+              {uploadError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium flex items-center gap-2">
+                  <XCircle className="h-5 w-5 shrink-0" />
+                  {uploadError}
                 </div>
-              </div>
-
-              <div className="border rounded-md overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 border-b">
-                  <p className="text-sm font-medium text-gray-700">
-                    Preview (showing first 10 of {rows.length})
-                  </p>
-                </div>
-                <div className="divide-y">
-                  {rows.slice(0, 10).map((r, idx) => (
-                    <div key={idx} className="px-4 py-3 hover:bg-gray-50">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">
-                          {r.email}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {sendSummary && (
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="border-t border-gray-100 -mx-4 mb-4" />
-              <p className="font-semibold text-gray-900">Send Summary</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-                  <p className="text-3xl font-bold text-green-600">
-                    {sendSummary.success}
-                  </p>
-                  <p className="text-sm text-green-700 mt-0.5">Successfully sent</p>
-                </div>
-                <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                  <p className="text-3xl font-bold text-red-600">
-                    {sendSummary.failed}
-                  </p>
-                  <p className="text-sm text-red-700 mt-0.5">Failed</p>
-                </div>
-              </div>
-              {sendSummary.errors.length > 0 && (
-                <details className="mt-3">
-                  <summary className="cursor-pointer text-sm font-medium text-red-600 hover:text-red-700">
-                    View error details ({sendSummary.errors.length} errors)
-                  </summary>
-                  <ul className="mt-2 space-y-1 text-sm text-red-600 list-disc pl-5">
-                    {sendSummary.errors.map((e, i) => (
-                      <li key={i}>{e}</li>
-                    ))}
-                  </ul>
-                </details>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Email History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5 text-gray-500" />
-            Email History
-          </CardTitle>
-          <p className="text-sm text-gray-500 mt-1">
-            Track all your sent email campaigns
-          </p>
-        </CardHeader>
-        <CardContent>
-          {emailHistory.length === 0 ? (
-            <div className="text-center py-12">
-              <History className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-              <p className="text-gray-500 text-sm">No email history yet. Sent emails will appear here.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {emailHistory.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="border rounded-lg p-4 shadow-sm ring-1 ring-gray-100 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-gray-900">
-                          {entry.subject}
-                        </h3>
-                        {entry.isHtml && (
-                          <span className="px-2 py-0.5 text-xs bg-violet-100 text-violet-700 rounded-full font-medium">
-                            HTML
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>
-                            {new Date(entry.timestamp).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          <span>{entry.recipientCount} recipients</span>
-                        </div>
-                      </div>
-                    </div>
+              {rows.length > 0 && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-green-600">
-                          <CheckCircle className="h-4 w-4" />
-                          <span className="font-bold">
-                            {entry.successCount}
-                          </span>
-                        </div>
-                        {entry.failedCount > 0 && (
-                          <div className="flex items-center gap-1 text-red-600">
-                            <XCircle className="h-4 w-4" />
-                            <span className="font-bold">
-                              {entry.failedCount}
-                            </span>
-                          </div>
-                        )}
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                      <div>
+                        <p className="font-bold text-green-900">List Processed Successfully</p>
+                        <p className="text-sm text-green-700 mt-0.5">{rows.length} valid email addresses found</p>
                       </div>
                     </div>
                   </div>
-
-                  {/* Recipients List with Pagination */}
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
-                      View all recipients ({entry.recipients.length})
-                    </summary>
-                    <div className="mt-2 p-4 bg-gray-50 rounded-md border">
-                      {(() => {
-                        const pageData = getRecipientPageData(entry);
-                        return (
-                          <>
-                            {/* Recipients List */}
-                            <div className="mb-3 space-y-1 max-h-96 overflow-y-auto">
-                              {pageData.paginatedRecipients.map((email, idx) => (
-                                <div
-                                  key={idx}
-                                  className="text-xs text-gray-700 py-1.5 px-2 border-b border-gray-200 last:border-0 hover:bg-gray-100 rounded"
-                                >
-                                  <span className="font-medium text-gray-500 mr-2">
-                                    {pageData.startIndex + idx}.
-                                  </span>
-                                  {email}
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Pagination Controls */}
-                            {pageData.totalPages > 1 && (
-                              <div className="flex items-center justify-between pt-3 border-t border-gray-300">
-                                <div className="text-xs text-gray-600">
-                                  Showing {pageData.startIndex} - {pageData.endIndex} of {entry.recipients.length} recipients
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                      e.preventDefault();
-                                      setRecipientPage(entry.id, pageData.currentPage - 1);
-                                    }}
-                                    disabled={pageData.currentPage === 1}
-                                    className="h-7 px-3 text-xs"
-                                  >
-                                    Previous
-                                  </Button>
-                                  <div className="text-xs text-gray-600">
-                                    Page {pageData.currentPage} of {pageData.totalPages}
-                                  </div>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                      e.preventDefault();
-                                      setRecipientPage(entry.id, pageData.currentPage + 1);
-                                    }}
-                                    disabled={pageData.currentPage === pageData.totalPages}
-                                    className="h-7 px-3 text-xs"
-                                  >
-                                    Next
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                            {pageData.totalPages === 1 && (
-                              <div className="text-xs text-gray-500 pt-2 border-t border-gray-300">
-                                Showing all {entry.recipients.length} recipients
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
+                  
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="bg-slate-50 px-4 py-2 border-b border-gray-200 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Preview (First 10)
                     </div>
-                  </details>
+                    <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto bg-white">
+                      {rows.slice(0, 10).map((r, idx) => (
+                        <div key={idx} className="px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 hover:bg-slate-50">
+                          <span className="w-5 text-gray-400 text-right text-xs">{idx + 1}.</span>
+                          <span className="font-medium">{r.email}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-                  {/* Errors with Pagination */}
-                  {entry.errors.length > 0 && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-sm text-red-600 hover:text-red-700">
-                        View errors ({entry.errors.length})
-                      </summary>
-                      <div className="mt-2 p-4 bg-red-50 rounded-md border border-red-200">
-                        {(() => {
-                          const errorPageData = getErrorPageData(entry);
-                          return (
-                            <>
-                              {/* Errors List */}
-                              <div className="mb-3 space-y-1 max-h-96 overflow-y-auto">
-                                <ul className="space-y-1 text-xs text-red-700">
-                                  {errorPageData.paginatedErrors.map((error, idx) => (
-                                    <li
-                                      key={idx}
-                                      className="py-1.5 px-2 border-b border-red-200 last:border-0 hover:bg-red-100 rounded"
-                                    >
-                                      <span className="font-medium text-red-500 mr-2">
-                                        {errorPageData.startIndex + idx}.
-                                      </span>
-                                      {error}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-
-                              {/* Pagination Controls */}
-                              {errorPageData.totalPages > 1 && (
-                                <div className="flex items-center justify-between pt-3 border-t border-red-300">
-                                  <div className="text-xs text-red-600">
-                                    Showing {errorPageData.startIndex} - {errorPageData.endIndex} of {entry.errors.length} errors
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                        e.preventDefault();
-                                        setErrorPage(entry.id, errorPageData.currentPage - 1);
-                                      }}
-                                      disabled={errorPageData.currentPage === 1}
-                                      className="h-7 px-3 text-xs border-red-300 text-red-700 hover:bg-red-100"
-                                    >
-                                      Previous
-                                    </Button>
-                                    <div className="text-xs text-red-600">
-                                      Page {errorPageData.currentPage} of {errorPageData.totalPages}
-                                    </div>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                        e.preventDefault();
-                                        setErrorPage(entry.id, errorPageData.currentPage + 1);
-                                      }}
-                                      disabled={errorPageData.currentPage === errorPageData.totalPages}
-                                      className="h-7 px-3 text-xs border-red-300 text-red-700 hover:bg-red-100"
-                                    >
-                                      Next
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                              {errorPageData.totalPages === 1 && (
-                                <div className="text-xs text-red-500 pt-2 border-t border-red-300">
-                                  Showing all {entry.errors.length} errors
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
+                  <div className="pt-4 border-t border-gray-100">
+                    <Button
+                      onClick={handleSendAll}
+                      disabled={sending || uploading}
+                      className="w-full bg-primary hover:bg-primary/90 text-white h-12 text-base font-bold shadow-md gap-2 rounded-xl"
+                    >
+                      {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mail className="h-5 w-5" />}
+                      {sending ? "Sending Campaign..." : `Send to ${rows.length} Recipients`}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {sendSummary && (
+                <div className="p-6 bg-slate-50 rounded-xl border border-gray-200 space-y-4 animate-in slide-in-from-bottom-2">
+                  <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-primary" /> Campaign Summary
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-white rounded-lg border border-green-100 shadow-sm text-center">
+                      <p className="text-4xl font-black text-green-600">{sendSummary.success}</p>
+                      <p className="text-sm font-semibold text-gray-600 mt-1">Delivered</p>
+                    </div>
+                    <div className="p-4 bg-white rounded-lg border border-red-100 shadow-sm text-center">
+                      <p className="text-4xl font-black text-red-600">{sendSummary.failed}</p>
+                      <p className="text-sm font-semibold text-gray-600 mt-1">Failed</p>
+                    </div>
+                  </div>
+                  {sendSummary.errors.length > 0 && (
+                    <details className="mt-2 text-sm text-red-700">
+                      <summary className="font-medium cursor-pointer py-2">View Error Details</summary>
+                      <ul className="pl-5 space-y-1 list-disc mt-2">
+                        {sendSummary.errors.map((e, i) => <li key={i}>{e}</li>)}
+                      </ul>
                     </details>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-        </CardContent>
-      </Card>
+        <div className="space-y-8">
+          {/* Instructions */}
+          <Card className="border-0 shadow-sm ring-1 ring-gray-100 bg-accent/20">
+            <CardHeader className="pb-3 border-b border-primary/10">
+              <CardTitle className="text-base text-primary">How to use</CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 text-sm text-gray-700">
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0 mt-0.5 text-xs">1</div>
+                  <p>Write your subject and message body. Use the HTML template for better visual presentation.</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0 mt-0.5 text-xs">2</div>
+                  <p>Upload any attachments or paste URLs for larger files.</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0 mt-0.5 text-xs">3</div>
+                  <p>Upload an Excel/CSV file with a column named <code className="bg-white px-1.5 py-0.5 rounded text-primary font-bold border border-primary/20">email</code>.</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0 mt-0.5 text-xs">4</div>
+                  <p>Review the processed list and hit send. Don't close the tab while sending!</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Instructions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm text-gray-600">
-          <ol className="list-decimal pl-6 space-y-3">
-            <li>
-              <strong>Customize your email:</strong> Set the subject line, add a
-              plain-text body, and optionally attach a header logo image
-            </li>
-            <li>
-              <strong>Add attachments:</strong> Upload images, PDFs, or
-              documents that will be sent with every email
-            </li>
-            <li>
-              <strong>Prepare recipient list:</strong> Download the template
-              Excel file
-            </li>
-            <li>
-              <strong>Fill recipients:</strong> Add one email address per row in
-              the <span className="font-medium text-gray-800">email</span> column
-            </li>
-            <li>
-              <strong>Upload:</strong> Upload the completed Excel file
-            </li>
-            <li>
-              <strong>Send:</strong> Review the recipient list and click "Send"
-              to dispatch emails
-            </li>
-          </ol>
-          <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-            <p className="text-sm font-semibold text-indigo-800 mb-2">✨ Features:</p>
-            <ul className="text-sm text-indigo-700 space-y-1 list-disc pl-5">
-              <li>Custom HTML email templates</li>
-              <li>File attachments (images, PDFs, documents)</li>
-              <li>Live preview before sending</li>
-              <li>Bulk sending to multiple recipients</li>
-              <li>Default Trizen Academy branding template included</li>
-            </ul>
-          </div>
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm font-semibold text-yellow-800 mb-1">⚠️ Important:</p>
-            <p className="text-sm text-yellow-700 mt-1">
-              All recipients will receive the same email with the same
-              attachments. Make sure your content and recipient list are correct
-              before sending.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          {/* Email History */}
+          <Card className="border-0 shadow-sm ring-1 ring-gray-100 overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b border-gray-100 px-5 py-4">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <History className="h-4 w-4 text-gray-500" /> Recent Campaigns
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {emailHistory.length === 0 ? (
+                <div className="text-center py-10 px-4">
+                  <p className="text-sm text-gray-500 font-medium">No history yet.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
+                  {emailHistory.map((entry) => {
+                    const successRate = entry.recipientCount > 0 ? (entry.successCount / entry.recipientCount) * 100 : 0;
+                    return (
+                      <div key={entry.id} className="p-5 hover:bg-slate-50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold text-gray-900 text-sm line-clamp-2 pr-2">{entry.subject || "(No subject)"}</h4>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400 shrink-0 whitespace-nowrap mt-1">
+                            {new Date(entry.timestamp).toLocaleDateString()}
+                          </span>
+                        </div>
+                        
+                        <div className="mb-3">
+                          <div className="flex justify-between text-xs font-medium mb-1">
+                            <span className="text-gray-600">{entry.recipientCount} emails</span>
+                            <span className="text-green-600">{Math.round(successRate)}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500" style={{ width: `${successRate}%` }} />
+                          </div>
+                        </div>
+
+                        <details className="text-xs group">
+                          <summary className="font-medium text-primary cursor-pointer hover:underline">View details</summary>
+                          <div className="mt-3 space-y-3 bg-white p-3 rounded border border-gray-100 shadow-sm">
+                            <div>
+                              <p className="font-semibold text-gray-700 mb-1">Recipients ({entry.recipients.length})</p>
+                              <div className="max-h-32 overflow-y-auto text-gray-500 space-y-1">
+                                {entry.recipients.map((em, i) => <div key={i}>{em}</div>)}
+                              </div>
+                            </div>
+                            {entry.errors.length > 0 && (
+                              <div>
+                                <p className="font-semibold text-red-700 mb-1">Errors ({entry.errors.length})</p>
+                                <div className="max-h-32 overflow-y-auto text-red-600 space-y-1">
+                                  {entry.errors.map((err, i) => <div key={i}>{err}</div>)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

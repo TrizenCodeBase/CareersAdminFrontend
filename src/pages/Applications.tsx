@@ -36,6 +36,14 @@ function parseBulkEmails(input: string): string[] {
   return emails.length >= 2 ? emails : [];
 }
 
+/** Get initials from a full name: first letter of first two words. */
+function getInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return '?';
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 interface AppliedRole {
   _id: string;
   jobId: string;
@@ -383,319 +391,437 @@ export default function Applications() {
     }
   };
 
+  // Build page numbers for pagination display
+  const getPageNumbers = () => {
+    const delta = 2;
+    const range: (number | '…')[] = [];
+    const left = Math.max(2, page - delta);
+    const right = Math.min(totalPages - 1, page + delta);
+
+    range.push(1);
+    if (left > 2) range.push('…');
+    for (let i = left; i <= right; i++) range.push(i);
+    if (right < totalPages - 1) range.push('…');
+    if (totalPages > 1) range.push(totalPages);
+
+    return range;
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Applications</h1>
-          <p className="text-gray-600 mt-1">View and manage all job applications</p>
+      {/* ── Page Header ── */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        {/* Brand accent top border */}
+        <div className="h-[3px] bg-gradient-to-r from-[#03045E] via-[#0077b6] to-[#DAF5FB]" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-bold text-[#03045E] tracking-tight">Applications</h1>
+                {!loading && (
+                  <span className="inline-flex items-center rounded-full bg-[#DAF5FB] px-2.5 py-0.5 text-xs font-semibold text-[#03045E] ring-1 ring-[#03045E]/10">
+                    {totalApplications}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 mt-0.5">View and manage all job applications</p>
+            </div>
+          </div>
+          <Button
+            onClick={exportEmails}
+            disabled={exportingEmails || loading}
+            className="w-full sm:w-auto gap-2 bg-[#03045E] hover:bg-[#03045E]/90 text-white shadow-sm"
+          >
+            {exportingEmails ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            <span>
+              {exportingEmails
+                ? 'Exporting…'
+                : jobIdFilter !== 'all'
+                  ? `Export emails — ${getJobTitle(jobIdFilter)}`
+                  : 'Export emails'}
+            </span>
+          </Button>
         </div>
-        <Button
-          onClick={exportEmails}
-          disabled={exportingEmails || loading}
-          className="w-full sm:w-auto"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          {exportingEmails
-            ? 'Exporting...'
-            : jobIdFilter !== 'all'
-              ? `Export emails — ${getJobTitle(jobIdFilter)}`
-              : 'Export emails'}
-        </Button>
       </div>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <div className="flex-1 min-w-0 space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            {showBulkSearchUi ? (
-              <Textarea
-                placeholder="Paste comma-separated emails to validate against the database..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onPaste={handleSearchPaste}
-                className="min-h-[96px] pl-10 font-mono text-sm"
-              />
-            ) : (
-              <Input
-                placeholder="Search name, email, location — or paste many emails to validate"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onPaste={handleSearchPaste}
-                className="pl-10"
-              />
+      {/* ── Filters Bar ── */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+          {/* Search / Bulk Email Input */}
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              {showBulkSearchUi ? (
+                <Textarea
+                  placeholder="Paste comma-separated emails to validate against the database..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onPaste={handleSearchPaste}
+                  className="min-h-[96px] pl-10 font-mono text-sm focus-visible:ring-[#03045E]/40 resize-none"
+                />
+              ) : (
+                <Input
+                  placeholder="Search name, email, location — or paste many emails to validate"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onPaste={handleSearchPaste}
+                  className="pl-10 h-10 focus-visible:ring-[#03045E]/40"
+                />
+              )}
+            </div>
+            {showBulkSearchUi && (
+              <p className="text-xs text-[#03045E]/70 flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                Bulk email check: <strong>{liveBulkEmails.length || bulkEmails.length}</strong> email
+                {(liveBulkEmails.length || bulkEmails.length) !== 1 ? 's' : ''} detected. Results show who is
+                in the DB and who is missing.
+              </p>
             )}
           </div>
-          {showBulkSearchUi && (
-            <p className="text-xs text-gray-500">
-              Bulk email check: {liveBulkEmails.length || bulkEmails.length} email
-              {(liveBulkEmails.length || bulkEmails.length) !== 1 ? 's' : ''} detected. Results show who is
-              in the DB and who is missing.
+
+          {/* Status Filter */}
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full lg:w-44 h-10">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              {APPLICATION_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {formatStatusLabel(status)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Role Filter */}
+          <Select
+            value={jobIdFilter}
+            onValueChange={(value) => {
+              setJobIdFilter(value);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full lg:w-80 h-10">
+              <SelectValue placeholder="Job Role" />
+            </SelectTrigger>
+            <SelectContent className="max-h-80 overflow-y-auto">
+              <SelectItem value="all">All Roles</SelectItem>
+              {JOB_OPTIONS.map((job) => (
+                <SelectItem key={job.id} value={job.id}>
+                  {job.title} ({job.id})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              onClick={clearFilters}
+              className="w-full lg:w-auto h-10 gap-1.5 text-gray-600 hover:text-red-600 hover:border-red-300"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear filters
+            </Button>
+          )}
+        </div>
+
+        {/* Active Filter Chips */}
+        {hasActiveFilters && !isBulkEmailMode && (
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Active:</span>
+            {jobIdFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#DAF5FB] px-2.5 py-1 text-xs font-medium text-[#03045E] ring-1 ring-[#03045E]/10">
+                Role: {getJobTitle(jobIdFilter)}
+                <button
+                  type="button"
+                  onClick={() => { setJobIdFilter('all'); setPage(1); }}
+                  className="ml-0.5 rounded-full hover:bg-[#03045E]/10 p-0.5 transition-colors"
+                  aria-label="Remove role filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            {statusFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#DAF5FB] px-2.5 py-1 text-xs font-medium text-[#03045E] ring-1 ring-[#03045E]/10">
+                Status: {formatStatusLabel(statusFilter)}
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter('all'); setPage(1); }}
+                  className="ml-0.5 rounded-full hover:bg-[#03045E]/10 p-0.5 transition-colors"
+                  aria-label="Remove status filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            {debouncedSearch && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#DAF5FB] px-2.5 py-1 text-xs font-medium text-[#03045E] ring-1 ring-[#03045E]/10">
+                Search: {debouncedSearch.length > 40 ? `${debouncedSearch.slice(0, 40)}…` : debouncedSearch}
+                <button
+                  type="button"
+                  onClick={() => { setSearch(''); setDebouncedSearch(''); setPage(1); }}
+                  className="ml-0.5 rounded-full hover:bg-[#03045E]/10 p-0.5 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Bulk Email Validation Panel ── */}
+      {isBulkEmailMode && emailLookup && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[#03045E] to-[#0077b6] px-5 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-white">Email Validation Results</h2>
+                <p className="text-sm text-white/70 mt-0.5">
+                  Checked {emailLookup.requested.length} unique email
+                  {emailLookup.requested.length !== 1 ? 's' : ''}
+                  {jobIdFilter !== 'all' ? ` for ${getJobTitle(jobIdFilter)}` : ''}
+                  {statusFilter !== 'all' ? ` · status ${statusFilter}` : ''}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-100 ring-1 ring-emerald-400/30">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Found {emailLookup.foundCount}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-100 ring-1 ring-red-400/30">
+                  <XCircle className="h-3.5 w-3.5" />
+                  Missing {emailLookup.missingCount}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1 text-xs font-semibold text-amber-100 ring-1 ring-amber-400/30">
+                  Not in list {emailLookup.notInListCount ?? emailLookup.notInList?.length ?? 0}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-5 space-y-4">
+            {emailLookup.foundCount > 0 && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <p className="text-sm font-semibold text-emerald-800">In your paste · found in database</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyEmails(emailLookup.found, 'found')}
+                    className="border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-100 gap-1.5 shrink-0"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedKind === 'found' ? 'Copied!' : 'Copy found'}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                  {emailLookup.found.map((email) => (
+                    <span
+                      key={email}
+                      className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-2.5 py-0.5 text-xs text-emerald-700 font-normal"
+                    >
+                      {email}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {emailLookup.missingCount > 0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    <p className="text-sm font-semibold text-red-800">In your paste · not in database</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyEmails(emailLookup.missing, 'missing')}
+                    className="border-red-300 bg-white text-red-700 hover:bg-red-100 gap-1.5 shrink-0"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedKind === 'missing' ? 'Copied!' : 'Copy missing'}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                  {emailLookup.missing.map((email) => (
+                    <span
+                      key={email}
+                      className="inline-flex items-center rounded-full border border-red-200 bg-white px-2.5 py-0.5 text-xs text-red-700 font-normal"
+                    >
+                      {email}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(emailLookup.notInList?.length ?? 0) > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">In database · not in your pasted list</p>
+                    <p className="text-xs text-amber-700/70">Other applicants matching current role/status filters</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyEmails(emailLookup.notInList || [], 'notInList')}
+                    className="border-amber-300 bg-white text-amber-700 hover:bg-amber-100 gap-1.5 shrink-0"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedKind === 'notInList' ? 'Copied!' : 'Copy not in list'}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                  {(emailLookup.notInList || []).map((email) => (
+                    <span
+                      key={email}
+                      className="inline-flex items-center rounded-full border border-amber-200 bg-white px-2.5 py-0.5 text-xs text-amber-900 font-normal"
+                    >
+                      {email}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Count Display ── */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#03045E]" />
+              <span>{isBulkEmailMode ? 'Validating emails…' : 'Loading applications…'}</span>
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-gray-700">
+              {isBulkEmailMode
+                ? (
+                  <>
+                    <span className="font-semibold text-[#03045E]">{applications.length}</span>
+                    {' '}matching application{applications.length !== 1 ? 's' : ''}
+                  </>
+                )
+                : (
+                  <>
+                    Showing{' '}
+                    <span className="font-semibold text-[#03045E]">{applications.length}</span>
+                    {' '}of{' '}
+                    <span className="font-semibold text-[#03045E]">{totalApplications}</span>
+                    {' '}application{totalApplications !== 1 ? 's' : ''}
+                    {totalPages > 1 && (
+                      <span className="text-gray-500 font-normal"> · Page {page} of {totalPages}</span>
+                    )}
+                  </>
+                )}
             </p>
           )}
         </div>
-
-        <Select
-          value={statusFilter}
-          onValueChange={(value) => {
-            setStatusFilter(value);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full lg:w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            {APPLICATION_STATUSES.map((status) => (
-              <SelectItem key={status} value={status}>
-                {formatStatusLabel(status)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={jobIdFilter}
-          onValueChange={(value) => {
-            setJobIdFilter(value);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full lg:w-80">
-            <SelectValue placeholder="Job Role" />
-          </SelectTrigger>
-          <SelectContent className="max-h-80 overflow-y-auto">
-            <SelectItem value="all">All Roles</SelectItem>
-            {JOB_OPTIONS.map((job) => (
-              <SelectItem key={job.id} value={job.id}>
-                {job.title} ({job.id})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {hasActiveFilters && (
-          <Button variant="outline" onClick={clearFilters} className="w-full lg:w-auto">
-            Clear filters
-          </Button>
-        )}
       </div>
 
-      {isBulkEmailMode && emailLookup && (
-        <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">Email validation</h2>
-              <p className="text-sm text-gray-600">
-                Checked {emailLookup.requested.length} unique email
-                {emailLookup.requested.length !== 1 ? 's' : ''}
-                {jobIdFilter !== 'all' ? ` for ${getJobTitle(jobIdFilter)}` : ''}
-                {statusFilter !== 'all' ? ` · status ${statusFilter}` : ''}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                Found {emailLookup.foundCount}
-              </Badge>
-              <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-                <XCircle className="h-3.5 w-3.5 mr-1" />
-                Missing {emailLookup.missingCount}
-              </Badge>
-              <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">
-                Not in paste {emailLookup.notInListCount ?? emailLookup.notInList?.length ?? 0}
-              </Badge>
-            </div>
-          </div>
-
-          {emailLookup.foundCount > 0 && (
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <p className="text-sm font-medium text-green-700">In your paste · found in database</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyEmails(emailLookup.found, 'found')}
-                >
-                  <Copy className="h-3.5 w-3.5 mr-1" />
-                  {copiedKind === 'found' ? 'Copied' : 'Copy found'}
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
-                {emailLookup.found.map((email) => (
-                  <Badge
-                    key={email}
-                    variant="outline"
-                    className="border-green-200 text-green-700 font-normal"
-                  >
-                    {email}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {emailLookup.missingCount > 0 && (
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <p className="text-sm font-medium text-red-700">In your paste · not in database</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyEmails(emailLookup.missing, 'missing')}
-                >
-                  <Copy className="h-3.5 w-3.5 mr-1" />
-                  {copiedKind === 'missing' ? 'Copied' : 'Copy missing'}
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                {emailLookup.missing.map((email) => (
-                  <Badge key={email} variant="outline" className="border-red-200 text-red-700 font-normal">
-                    {email}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(emailLookup.notInList?.length ?? 0) > 0 && (
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div>
-                  <p className="text-sm font-medium text-amber-800">In database · not in your pasted list</p>
-                  <p className="text-xs text-gray-500">
-                    Other applicants matching current role/status filters
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyEmails(emailLookup.notInList || [], 'notInList')}
-                >
-                  <Copy className="h-3.5 w-3.5 mr-1" />
-                  {copiedKind === 'notInList' ? 'Copied' : 'Copy not in list'}
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                {(emailLookup.notInList || []).map((email) => (
-                  <Badge
-                    key={email}
-                    variant="outline"
-                    className="border-amber-200 text-amber-900 font-normal"
-                  >
-                    {email}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {hasActiveFilters && !isBulkEmailMode && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-gray-600 font-medium">Active filters:</span>
-          {jobIdFilter !== 'all' && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              Role: {getJobTitle(jobIdFilter)}
-              <button
-                type="button"
-                onClick={() => {
-                  setJobIdFilter('all');
-                  setPage(1);
-                }}
-                className="ml-1 hover:text-red-600 transition-colors"
-                aria-label="Remove role filter"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {statusFilter !== 'all' && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              Status: {formatStatusLabel(statusFilter)}
-              <button
-                type="button"
-                onClick={() => {
-                  setStatusFilter('all');
-                  setPage(1);
-                }}
-                className="ml-1 hover:text-red-600 transition-colors"
-                aria-label="Remove status filter"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {debouncedSearch && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              Search: {debouncedSearch.length > 40 ? `${debouncedSearch.slice(0, 40)}…` : debouncedSearch}
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch('');
-                  setDebouncedSearch('');
-                  setPage(1);
-                }}
-                className="ml-1 hover:text-red-600 transition-colors"
-                aria-label="Clear search"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-        </div>
-      )}
-
-      <div className="text-sm text-gray-600">
-        {loading
-          ? isBulkEmailMode
-            ? 'Validating emails...'
-            : 'Loading applications...'
-          : isBulkEmailMode
-            ? `Showing ${applications.length} matching application${applications.length !== 1 ? 's' : ''}`
-            : `Showing ${applications.length} of ${totalApplications} application${totalApplications !== 1 ? 's' : ''}${
-                totalPages > 1 ? ` (Page ${page} of ${totalPages})` : ''
-              }`}
-      </div>
-
-      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto relative">
+      {/* ── Applications Table ── */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-x-auto relative">
         {loading && (
-          <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center text-sm text-gray-500">
-            {isBulkEmailMode ? 'Validating emails...' : 'Updating results...'}
+          <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-xl">
+            <div className="flex items-center gap-2.5 rounded-full bg-white px-4 py-2 shadow-md border border-gray-100 text-sm text-gray-600 font-medium">
+              <Loader2 className="h-4 w-4 animate-spin text-[#03045E]" />
+              {isBulkEmailMode ? 'Validating emails…' : 'Updating results…'}
+            </div>
           </div>
         )}
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[150px]">Name</TableHead>
-              <TableHead className="min-w-[200px]">Email</TableHead>
-              <TableHead className="min-w-[120px]">Phone</TableHead>
-              <TableHead className="min-w-[120px]">Resume</TableHead>
-              <TableHead className="min-w-[180px]">Job Role</TableHead>
-              <TableHead className="min-w-[160px]">GitHub / Portfolio</TableHead>
-              <TableHead className="min-w-[140px]">Assignment</TableHead>
-              <TableHead className="min-w-[160px]">Interview</TableHead>
-              <TableHead className="min-w-[120px]">Status</TableHead>
-              <TableHead className="min-w-[160px]">Remarks</TableHead>
-              <TableHead className="min-w-[120px]">Applied Date</TableHead>
-              <TableHead className="min-w-[100px]">Actions</TableHead>
+          <TableHeader className="sticky top-0 z-[5]">
+            <TableRow className="bg-gray-50 hover:bg-gray-50 border-b border-gray-200">
+              <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-gray-500">Name</TableHead>
+              <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-gray-500">Email</TableHead>
+              <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Phone</TableHead>
+              <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Resume</TableHead>
+              <TableHead className="min-w-[180px] text-xs font-semibold uppercase tracking-wide text-gray-500">Job Role</TableHead>
+              <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-gray-500">GitHub / Portfolio</TableHead>
+              <TableHead className="min-w-[140px] text-xs font-semibold uppercase tracking-wide text-gray-500">Assignment</TableHead>
+              <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-gray-500">Interview</TableHead>
+              <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Status</TableHead>
+              <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-gray-500">Remarks</TableHead>
+              <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Applied Date</TableHead>
+              <TableHead className="min-w-[100px] text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {!loading && applications.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8 text-gray-500">
-                  {isBulkEmailMode
-                    ? 'None of these emails were found in the database'
-                    : `No applications found${hasActiveFilters ? ' for the selected filters' : ''}`}
+                <TableCell colSpan={12} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="rounded-full bg-gray-100 p-4">
+                      <FileText className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">
+                        {isBulkEmailMode
+                          ? 'No matches found'
+                          : 'No applications found'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {isBulkEmailMode
+                          ? 'None of these emails were found in the database'
+                          : hasActiveFilters
+                            ? 'Try adjusting or clearing the active filters'
+                            : 'Applications will appear here once submitted'}
+                      </p>
+                    </div>
+                    {hasActiveFilters && !isBulkEmailMode && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="mt-1 gap-1.5 text-gray-600 hover:text-red-600"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Clear filters
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
-              applications.map((app) => (
-                <TableRow key={app._id}>
-                  <TableCell className="font-medium">{app.fullName}</TableCell>
+              applications.map((app, index) => (
+                <TableRow
+                  key={app._id}
+                  className={`transition-colors hover:bg-[#DAF5FB]/20 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                >
+                  {/* Name with avatar */}
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-[#03045E]/10 text-[#03045E] text-xs font-semibold flex items-center justify-center shrink-0 select-none">
+                        {getInitials(app.fullName)}
+                      </div>
+                      <span className="truncate">{app.fullName}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <a href={`mailto:${app.email}`} className="text-blue-600 hover:underline">
                       {app.email}
@@ -833,12 +959,16 @@ export default function Applications() {
                       {app.adminRemarks?.trim() || '—'}
                     </span>
                   </TableCell>
-                  <TableCell>{format(new Date(app.createdAt), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell className="text-sm text-gray-600">{format(new Date(app.createdAt), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>
                     <Link to={`/applications/${app._id}`} state={listReturnState}>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 hover:bg-[#03045E] hover:text-white hover:border-[#03045E] transition-colors"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span className="hidden sm:inline">View</span>
                       </Button>
                     </Link>
                   </TableCell>
@@ -849,25 +979,49 @@ export default function Applications() {
         </Table>
       </div>
 
+      {/* ── Pagination ── */}
       {!isBulkEmailMode && totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Page {page} of {totalPages}
-          </div>
-          <div className="flex gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-3">
+          <p className="text-sm text-gray-600">
+            Page <span className="font-semibold text-[#03045E]">{page}</span> of{' '}
+            <span className="font-semibold text-[#03045E]">{totalPages}</span>
+          </p>
+          <div className="flex items-center gap-1">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || loading}
+              className="h-8 px-3"
             >
-              Previous
+              ← Prev
             </Button>
+
+            {getPageNumbers().map((num, i) =>
+              num === '…' ? (
+                <span key={`ellipsis-${i}`} className="px-1.5 text-gray-400 text-sm select-none">…</span>
+              ) : (
+                <Button
+                  key={num}
+                  variant={num === page ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPage(num as number)}
+                  disabled={loading}
+                  className={`h-8 w-8 p-0 text-sm ${num === page ? 'bg-[#03045E] hover:bg-[#03045E]/90 text-white border-[#03045E]' : ''}`}
+                >
+                  {num}
+                </Button>
+              )
+            )}
+
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || loading}
+              className="h-8 px-3"
             >
-              Next
+              Next →
             </Button>
           </div>
         </div>

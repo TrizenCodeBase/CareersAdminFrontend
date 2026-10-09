@@ -78,3 +78,54 @@
   }
 }
 
+/* ── Custom scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Focus-visible ring ───────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #03045E;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Page fade-in animation ───────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+main > * {
+  animation: fadeIn 0.22s ease-out both;
+}
+
+/* ── Skeleton shimmer animation ───────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+
+/* ── Print helpers ────────────────────────────────────────── */
+@media print {
+  aside, header { display: none !important; }
+  .ml-64 { margin-left: 0 !important; }
+}
