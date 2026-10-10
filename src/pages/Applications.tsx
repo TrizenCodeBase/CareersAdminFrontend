@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
-import { JOB_OPTIONS, getJobTitle, getRoleFamilyLabel, isSameRoleFamily } from '@/config/jobs';
+import { JOB_OPTIONS, getAllJobOptions, registerJobTitle, getJobTitle, getRoleFamilyLabel, isSameRoleFamily } from '@/config/jobs';
 import { APPLICATION_STATUSES, formatStatusLabel } from '@/config/applicationStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -121,6 +121,19 @@ export default function Applications() {
   const [copiedKind, setCopiedKind] = useState<'found' | 'missing' | 'notInList' | null>(null);
   const [filtersReady, setFiltersReady] = useState(false);
   const [resumePreview, setResumePreview] = useState<Application | null>(null);
+  const [availableJobOptions, setAvailableJobOptions] = useState(getAllJobOptions);
+
+  useEffect(() => {
+    fetch(API_CONFIG.ENDPOINTS.JOBS)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          data.data.forEach((j: any) => registerJobTitle(j.id, j.title));
+          setAvailableJobOptions(getAllJobOptions());
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const bulkEmails = useMemo(() => parseBulkEmails(debouncedSearch), [debouncedSearch]);
   const isBulkEmailMode = bulkEmails.length >= 2;
@@ -517,7 +530,7 @@ export default function Applications() {
             </SelectTrigger>
             <SelectContent className="max-h-80 overflow-y-auto">
               <SelectItem value="all">All Roles</SelectItem>
-              {JOB_OPTIONS.map((job) => (
+              {availableJobOptions.map((job) => (
                 <SelectItem key={job.id} value={job.id}>
                   {job.title} ({job.id})
                 </SelectItem>

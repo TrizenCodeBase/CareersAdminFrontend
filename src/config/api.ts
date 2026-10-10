@@ -22,6 +22,9 @@ export const API_CONFIG = {
     applicationStatus: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/status`,
     applicationAdminNotes: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/admin-notes`,
     applicationById: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}`,
+    JOBS: `${API_BASE_URL}/api/v1/jobs`,
+    jobById: (id: string) => `${API_BASE_URL}/api/v1/jobs/${id}`,
+    jobStatus: (id: string) => `${API_BASE_URL}/api/v1/jobs/${id}/status`,
     USERS: {
       LOGIN: `${API_BASE_URL}/api/v1/users/login`,
       PROFILE: `${API_BASE_URL}/api/v1/users/profile`,

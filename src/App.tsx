@@ -7,6 +7,7 @@ import Applications from './pages/Applications';
 import ApplicationDetail from './pages/ApplicationDetail';
 import EmailNotifications from './pages/EmailNotifications';
 import BulkEmailUpload from './pages/BulkEmailUpload';
+import Jobs from './pages/Jobs';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -52,6 +53,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ApplicationDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs"
+        element={
+          <ProtectedRoute>
+            <Jobs />
           </ProtectedRoute>
         }
       />

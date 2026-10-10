@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, FileText, User, Mail, Upload, ChevronRight } from 'lucide-react';
+import { LogOut, LayoutDashboard, FileText, User, Mail, Upload, ChevronRight, Briefcase } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -100,6 +100,7 @@ export default function Layout({ children }: LayoutProps) {
           </p>
           {navItem('/dashboard', 'Dashboard', <LayoutDashboard className="h-4 w-4" />)}
           {navItem('/applications', 'Applications', <FileText className="h-4 w-4" />, false)}
+          {navItem('/jobs', 'Job Management', <Briefcase className="h-4 w-4" />)}
 
           <div className="my-3 border-t border-gray-100" />
 

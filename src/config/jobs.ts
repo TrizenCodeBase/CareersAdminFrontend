@@ -28,14 +28,29 @@ export const JOB_TITLES: Record<string, string> = {
   'TV-MKT-SDMH-2026-011': 'Social Media & Digital Marketing Intern – Healthcare',
 };
 
+export const dynamicJobTitles: Record<string, string> = {};
+
+export function registerJobTitle(id: string, title: string) {
+  if (id && title) {
+    dynamicJobTitles[id] = title;
+  }
+}
+
 export const JOB_OPTIONS: JobOption[] = Object.entries(JOB_TITLES).map(([id, title]) => ({
   id,
   title,
 }));
 
+export function getAllJobOptions(): JobOption[] {
+  const optionsMap = new Map<string, string>();
+  Object.entries(JOB_TITLES).forEach(([id, title]) => optionsMap.set(id, title));
+  Object.entries(dynamicJobTitles).forEach(([id, title]) => optionsMap.set(id, title));
+  return Array.from(optionsMap.entries()).map(([id, title]) => ({ id, title }));
+}
+
 export function getJobTitle(jobId?: string | null): string {
   if (!jobId) return 'N/A';
-  return JOB_TITLES[jobId] || jobId;
+  return JOB_TITLES[jobId] || dynamicJobTitles[jobId] || jobId;
 }
 
 /** Groups openings that are the same role family across years/codes (e.g. all MERN). */
