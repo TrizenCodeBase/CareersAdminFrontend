@@ -14,15 +14,12 @@ import {
   Search,
   Loader2,
   Pencil,
-  Globe,
-  EyeOff,
   X,
   Briefcase,
   MapPin,
   Clock,
   Tag,
   CheckCircle,
-  RefreshCcw,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -67,7 +64,7 @@ const EMPLOYMENT_TYPES = ['Full-Time', 'Internship', 'Part-Time', 'Contract (3 M
 const LOCATIONS = ['Remote', 'Remote / Hybrid', 'Hyderabad (Hybrid)', 'Hyderabad', 'Bangalore', 'Mumbai', 'Delhi', 'On-Site'] as const;
 
 const STATUS_CONFIG: Record<JobStatus, { label: string; className: string }> = {
-  published: { label: 'Published', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  published: { label: 'Live', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   draft:     { label: 'Draft',     className: 'bg-amber-50  text-amber-700  border-amber-200'   },
   closed:    { label: 'Closed',    className: 'bg-gray-100  text-gray-600   border-gray-200'    },
 };
@@ -308,11 +305,13 @@ export default function Jobs() {
         body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        setJobs(prev => prev.map(j => j._id === job._id ? { ...j, status: newStatus, closedDate: data.data?.closedDate ?? j.closedDate } : j));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Could not update job status (${res.status}).`);
       }
+      setJobs(prev => prev.map(j => j._id === job._id ? { ...j, status: newStatus, closedDate: data.data?.closedDate ?? j.closedDate } : j));
     } catch (err) {
       console.error('Error changing status:', err);
+      alert(err instanceof Error ? err.message : 'Could not update job status.');
     } finally {
       setSavingStatusId(null);
     }
@@ -377,7 +376,7 @@ export default function Jobs() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="published">Live</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="closed">Closed</SelectItem>
           </SelectContent>
@@ -445,9 +444,31 @@ export default function Jobs() {
                     <span className="text-sm text-gray-600">{job.type}</span>
                   </TableCell>
                   <TableCell className="py-3.5 px-4">
-                    <Badge className={cn('border text-[11px] font-semibold', STATUS_CONFIG[job.status]?.className)}>
-                      {STATUS_CONFIG[job.status]?.label ?? job.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={job.status}
+                        onValueChange={(value) => handleStatusChange(job, value as JobStatus)}
+                        disabled={savingStatusId === job._id}
+                      >
+                        <SelectTrigger
+                          aria-label={`Change status for ${job.title}`}
+                          className={cn(
+                            'h-8 w-32 border text-xs font-semibold',
+                            STATUS_CONFIG[job.status]?.className
+                          )}
+                        >
+                          <SelectValue>{STATUS_CONFIG[job.status]?.label ?? job.status}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="published">Live</SelectItem>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="closed">Closed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {savingStatusId === job._id && (
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="py-3.5 px-4">
                     <div className="flex items-center justify-end gap-1.5">
@@ -460,52 +481,6 @@ export default function Jobs() {
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
 
-                      {/* Status quick-toggle */}
-                      {savingStatusId === job._id ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-1" />
-                      ) : job.status === 'published' ? (
-                        <>
-                          <button
-                            onClick={() => handleStatusChange(job, 'draft')}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                            title="Unpublish (set to Draft)"
-                          >
-                            <EyeOff className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange(job, 'closed')}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Close position"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </>
-                      ) : job.status === 'draft' ? (
-                        <>
-                          <button
-                            onClick={() => handleStatusChange(job, 'published')}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                            title="Publish job"
-                          >
-                            <Globe className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange(job, 'closed')}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Close position"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleStatusChange(job, 'published')}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                          title="Re-publish job"
-                        >
-                          <RefreshCcw className="h-3.5 w-3.5" />
-                        </button>
-                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -690,7 +665,7 @@ export default function Jobs() {
                       <Select value={form.status ?? 'published'} onValueChange={v => setField('status', v as JobStatus)}>
                         <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="published">Published</SelectItem>
+                          <SelectItem value="published">Live</SelectItem>
                           <SelectItem value="draft">Draft</SelectItem>
                           <SelectItem value="closed">Closed</SelectItem>
                         </SelectContent>

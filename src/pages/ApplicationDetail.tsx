@@ -202,8 +202,6 @@ export default function ApplicationDetail() {
     : '/applications';
   const [application, setApplication] = useState<Application | null>(null);
   const [relatedApplications, setRelatedApplications] = useState<RelatedApplication[]>([]);
-  const [status, setStatus] = useState('');
-  const [relatedStatusDrafts, setRelatedStatusDrafts] = useState<Record<string, string>>({});
   const [savingRelatedId, setSavingRelatedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -279,7 +277,6 @@ export default function ApplicationDetail() {
       }
 
       setApplication(data.data);
-      setStatus(data.data.status);
       setAdminRemarks(data.data.adminRemarks || '');
       setRecordings(Array.isArray(data.data.adminRecordings) ? data.data.adminRecordings : []);
       setSource(data.data.source || '');
@@ -300,7 +297,6 @@ export default function ApplicationDetail() {
         ? data.relatedApplications
         : [];
       setRelatedApplications(related);
-      setRelatedStatusDrafts(Object.fromEntries(related.map((app) => [app._id, app.status])));
     } catch (error) {
       console.error('Error fetching application:', error);
       setApplication(null);
@@ -320,33 +316,33 @@ export default function ApplicationDetail() {
     }
 
     try {
+      const targetJobId = applicationId === application._id
+        ? application.jobId
+        : relatedApplications.find((app) => app._id === applicationId)?.jobId;
       const response = await fetch(API_CONFIG.ENDPOINTS.applicationStatus(applicationId), {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({ status: nextStatus, ...(targetJobId && { jobId: targetJobId }) }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
-
       const data = await response.json();
+      if (!response.ok || !data.success || !data.data) {
+        throw new Error(data.error || 'Failed to update status');
+      }
       const related: RelatedApplication[] = Array.isArray(data.relatedApplications)
         ? data.relatedApplications
         : relatedApplications;
 
       setRelatedApplications(related);
-      setRelatedStatusDrafts(Object.fromEntries(related.map((app) => [app._id, app.status])));
 
       if (isCurrent || applicationId === application._id) {
         setApplication({
           ...application,
           ...data.data,
         });
-        setStatus(data.data.status);
         setAssignmentSent(Boolean(data.data.assignmentSent));
         setAssignmentReceived(Boolean(data.data.assignmentReceived));
         setInterviewLinkSent(Boolean(data.data.interviewLinkSent));
@@ -357,7 +353,7 @@ export default function ApplicationDetail() {
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Failed to update status');
+      alert(error instanceof Error ? error.message : 'Failed to update status');
     } finally {
       setSaving(false);
       setSavingRelatedId(null);
@@ -556,7 +552,12 @@ export default function ApplicationDetail() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 p-2.5 backdrop-blur-sm">
-              <Select value={status} onValueChange={setStatus}>
+              <span className="px-1 text-xs font-medium text-white/80">Status</span>
+              <Select
+                value={application.status}
+                onValueChange={(nextStatus) => handleStatusUpdate(application._id, nextStatus, true)}
+                disabled={saving || savingRelatedId !== null}
+              >
                 <SelectTrigger className="h-9 w-44 border-white/20 bg-white text-slate-900 font-medium text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -568,19 +569,12 @@ export default function ApplicationDetail() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                size="sm"
-                onClick={() => handleStatusUpdate(application._id, status, true)}
-                disabled={saving || status === application.status}
-                className="bg-white font-semibold text-brand-primary hover:bg-brand-accent disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                {saving ? 'Saving…' : 'Save status'}
-              </Button>
+              {saving && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white/80">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Saving
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -667,7 +661,6 @@ export default function ApplicationDetail() {
 
         <div className="grid gap-3">
           {relatedApplications.map((app) => {
-            const draft = relatedStatusDrafts[app._id] || app.status;
             const isCurrent = app._id === application._id;
             const isEarlierSameRole =
               !isCurrent && isSameRoleFamily(app.jobId, application.jobId);
@@ -700,7 +693,6 @@ export default function ApplicationDetail() {
                           Earlier {roleFamilyLabel} application
                         </Badge>
                       )}
-                      <StatusBadge value={app.status} />
                     </div>
                     <p className="text-xs text-slate-500">
                       {app.jobId} · Applied {format(new Date(app.createdAt), 'MMM d, yyyy')}
@@ -711,10 +703,9 @@ export default function ApplicationDetail() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <Select
-                      value={draft}
-                      onValueChange={(value) =>
-                        setRelatedStatusDrafts((prev) => ({ ...prev, [app._id]: value }))
-                      }
+                      value={app.status}
+                      onValueChange={(value) => handleStatusUpdate(app._id, value, isCurrent)}
+                      disabled={saving || savingRelatedId !== null}
                     >
                       <SelectTrigger className="h-9 w-36 bg-white text-sm">
                         <SelectValue />
@@ -727,17 +718,12 @@ export default function ApplicationDetail() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={savingRelatedId === app._id || draft === app.status}
-                      onClick={() => handleStatusUpdate(app._id, draft, isCurrent)}
-                    >
-                      {savingRelatedId === app._id ? (
+                    {(savingRelatedId === app._id || (isCurrent && saving)) && (
+                      <span className="inline-flex items-center text-xs text-slate-500">
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      ) : null}
-                      {savingRelatedId === app._id ? 'Saving…' : 'Update'}
-                    </Button>
+                        Saving
+                      </span>
+                    )}
                     {!isCurrent && (
                       <Link
                         to={`/applications/${app._id}?jobId=${encodeURIComponent(app.jobId)}`}
@@ -763,9 +749,6 @@ export default function ApplicationDetail() {
           <Section title="Application overview">
             <dl className="grid gap-4 sm:grid-cols-2">
               <Field label="Role">{getJobTitle(application.jobId)}</Field>
-              <Field label="Status">
-                <StatusBadge value={application.status} />
-              </Field>
               <Field label={isGenAiJob ? 'Expected rate (₹ / month)' : 'Expected stipend'}>
                 {isGenAiJob ? application.expectedMonthlyRate : application.expectedStipend}
               </Field>

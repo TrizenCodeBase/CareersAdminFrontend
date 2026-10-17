@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
 import { JOB_OPTIONS, getAllJobOptions, registerJobTitle, getJobTitle, getRoleFamilyLabel, isSameRoleFamily } from '@/config/jobs';
 import { APPLICATION_STATUSES, formatStatusLabel } from '@/config/applicationStatus';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, X, Download, CheckCircle2, XCircle, Copy, Loader2, FileText } from 'lucide-react';
+import { Search, Eye, X, Download, CheckCircle2, XCircle, Copy, Loader2, FileText, Trash2, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadFile, getResumeDownloadUrl } from '@/lib/utils';
 import { ResumePreviewDialog } from '@/components/ResumePreviewDialog';
@@ -63,6 +63,7 @@ interface Application {
   jobId: string;
   status: string;
   createdAt: string;
+  deletedAt?: string | null;
   source?: string;
   githubPortfolio?: string;
   assignmentSent?: boolean;
@@ -105,7 +106,9 @@ interface EmailLookupResult {
 export default function Applications() {
   const { token, isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isBin = location.pathname === '/applications/bin';
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,9 +139,9 @@ export default function Applications() {
   }, []);
 
   const bulkEmails = useMemo(() => parseBulkEmails(debouncedSearch), [debouncedSearch]);
-  const isBulkEmailMode = bulkEmails.length >= 2;
+  const isBulkEmailMode = !isBin && bulkEmails.length >= 2;
   const liveBulkEmails = useMemo(() => parseBulkEmails(search), [search]);
-  const showBulkSearchUi = liveBulkEmails.length >= 2 || isBulkEmailMode;
+  const showBulkSearchUi = !isBin && (liveBulkEmails.length >= 2 || isBulkEmailMode);
 
   const listReturnState = useMemo(
     () => ({ fromList: searchParams.toString() }),
@@ -181,7 +184,7 @@ export default function Applications() {
       setEmailLookup(null);
       fetchApplications();
     }
-  }, [filtersReady, isAuthenticated, isAdmin, navigate, page, statusFilter, jobIdFilter, debouncedSearch, isBulkEmailMode]);
+  }, [filtersReady, isAuthenticated, isAdmin, navigate, page, statusFilter, jobIdFilter, debouncedSearch, isBulkEmailMode, isBin]);
 
   const buildFilterParams = (pageNum: number, limit: number) => {
     const params = new URLSearchParams({
@@ -253,7 +256,8 @@ export default function Applications() {
     setLoading(true);
     try {
       const params = buildFilterParams(page, 20);
-      const response = await fetch(`${API_CONFIG.ENDPOINTS.APPLICATIONS}?${params}`, {
+      const endpoint = isBin ? API_CONFIG.ENDPOINTS.APPLICATIONS_BIN : API_CONFIG.ENDPOINTS.APPLICATIONS;
+      const response = await fetch(`${endpoint}?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -283,6 +287,49 @@ export default function Applications() {
       setTotalApplications(0);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const moveToBin = async (app: Application) => {
+    if (!window.confirm(`Move ${app.fullName}'s application to the Bin?`)) return;
+    try {
+      const response = await fetch(API_CONFIG.ENDPOINTS.applicationTrash(app._id), {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobId: app.jobId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Could not move application to the Bin.');
+      }
+      await fetchApplications();
+    } catch (error) {
+      console.error('Error moving application to bin:', error);
+      alert(error instanceof Error ? error.message : 'Could not move application to the Bin.');
+    }
+  };
+
+  const restoreFromBin = async (app: Application) => {
+    try {
+      const response = await fetch(API_CONFIG.ENDPOINTS.applicationRestore(app._id), {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobId: app.jobId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Could not restore application.');
+      }
+      await fetchApplications();
+    } catch (error) {
+      console.error('Error restoring application:', error);
+      alert(error instanceof Error ? error.message : 'Could not restore application.');
     }
   };
 
@@ -430,34 +477,45 @@ export default function Applications() {
           <div className="flex items-center gap-3">
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl font-bold text-[#03045E] tracking-tight">Applications</h1>
+                <h1 className="text-2xl font-bold text-[#03045E] tracking-tight">
+                  {isBin ? 'Application Bin' : 'Applications'}
+                </h1>
                 {!loading && (
                   <span className="inline-flex items-center rounded-full bg-[#DAF5FB] px-2.5 py-0.5 text-xs font-semibold text-[#03045E] ring-1 ring-[#03045E]/10">
                     {totalApplications}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500 mt-0.5">View and manage all job applications</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {isBin ? 'Restore applications removed from the active list' : 'Review and manage job applications'}
+              </p>
             </div>
           </div>
-          <Button
-            onClick={exportEmails}
-            disabled={exportingEmails || loading}
-            className="w-full sm:w-auto gap-2 bg-[#03045E] hover:bg-[#03045E]/90 text-white shadow-sm"
-          >
-            {exportingEmails ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            <span>
-              {exportingEmails
-                ? 'Exporting…'
-                : jobIdFilter !== 'all'
-                  ? `Export emails — ${getJobTitle(jobIdFilter)}`
-                  : 'Export emails'}
-            </span>
-          </Button>
+          {isBin ? (
+            <Button
+              variant="outline"
+              onClick={() => navigate('/applications')}
+              className="w-full gap-2 sm:w-auto"
+            >
+              <FileText className="h-4 w-4" />
+              Active applications
+            </Button>
+          ) : (
+            <Button
+              onClick={exportEmails}
+              disabled={exportingEmails || loading}
+              className="w-full gap-2 bg-[#03045E] text-white shadow-sm hover:bg-[#03045E]/90 sm:w-auto"
+            >
+              {exportingEmails ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              <span>
+                {exportingEmails
+                  ? 'Exporting…'
+                  : jobIdFilter !== 'all'
+                    ? `Export emails — ${getJobTitle(jobIdFilter)}`
+                    : 'Export emails'}
+              </span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -770,24 +828,22 @@ export default function Applications() {
         <Table>
           <TableHeader className="sticky top-0 z-[5]">
             <TableRow className="bg-gray-50 hover:bg-gray-50 border-b border-gray-200">
-              <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-gray-500">Name</TableHead>
-              <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-gray-500">Email</TableHead>
-              <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Phone</TableHead>
+              <TableHead className="min-w-[240px] text-xs font-semibold uppercase tracking-wide text-gray-500">Applicant</TableHead>
+              <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-gray-500">Role</TableHead>
               <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Resume</TableHead>
-              <TableHead className="min-w-[180px] text-xs font-semibold uppercase tracking-wide text-gray-500">Job Role</TableHead>
-              <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-gray-500">GitHub / Portfolio</TableHead>
-              <TableHead className="min-w-[140px] text-xs font-semibold uppercase tracking-wide text-gray-500">Assignment</TableHead>
-              <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-gray-500">Interview</TableHead>
-              <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Status</TableHead>
-              <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-gray-500">Remarks</TableHead>
-              <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Applied Date</TableHead>
-              <TableHead className="min-w-[100px] text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</TableHead>
+              <TableHead className="min-w-[130px] text-xs font-semibold uppercase tracking-wide text-gray-500">Status</TableHead>
+              <TableHead className="min-w-[130px] text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {isBin ? 'Moved to bin' : 'Applied'}
+              </TableHead>
+              <TableHead className="w-[72px] text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Action
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {!loading && applications.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="py-16 text-center">
+                <TableCell colSpan={6} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="rounded-full bg-gray-100 p-4">
                       <FileText className="h-8 w-8 text-gray-400" />
@@ -796,7 +852,9 @@ export default function Applications() {
                       <p className="text-sm font-semibold text-gray-700">
                         {isBulkEmailMode
                           ? 'No matches found'
-                          : 'No applications found'}
+                          : isBin
+                            ? 'The Bin is empty'
+                            : 'No applications found'}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
                         {isBulkEmailMode
@@ -829,67 +887,36 @@ export default function Applications() {
                     if (target?.closest('a, button, input, textarea, select, [role="button"]')) {
                       return;
                     }
+                    if (isBin) return;
                     navigate(`/applications/${app._id}?jobId=${encodeURIComponent(app.jobId)}`, {
                       state: { ...listReturnState, jobId: app.jobId }
                     });
                   }}
-                  className={`cursor-pointer transition-colors hover:bg-[#DAF5FB]/30 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
-                  title="Click to view details"
+                  className={`${isBin ? '' : 'cursor-pointer'} transition-colors hover:bg-[#DAF5FB]/30 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                  title={isBin ? undefined : 'Click to view details'}
                 >
-                  {/* Name with avatar */}
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-[#03045E]/10 text-[#03045E] text-xs font-semibold flex items-center justify-center shrink-0 select-none">
+                  <TableCell>
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-[#03045E]/10 text-xs font-semibold text-[#03045E]">
                         {getInitials(app.fullName)}
                       </div>
-                      <span className="truncate">{app.fullName}</span>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">{app.fullName}</p>
+                        <a
+                          href={`mailto:${app.email}`}
+                          className="block truncate text-sm text-blue-600 hover:underline"
+                        >
+                          {app.email}
+                        </a>
+                        <p className="mt-0.5 text-xs text-slate-500">{app.phone}</p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <a href={`mailto:${app.email}`} className="text-blue-600 hover:underline">
-                      {app.email}
-                    </a>
-                  </TableCell>
-                  <TableCell>
-                    <a href={`tel:${app.phone}`} className="text-blue-600 hover:underline">
-                      {app.phone}
-                    </a>
-                  </TableCell>
-                  <TableCell>
-                    {app.resumeLink ? (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setResumePreview(app)}
-                        >
-                          <Eye className="h-4 w-4 mr-1.5" />
-                          View
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            downloadFile(
-                              getResumeDownloadUrl(app.resumeLink, API_CONFIG.ENDPOINTS.RESUME_PROXY),
-                              `resume-${app._id}.pdf`,
-                              app.resumeLink
-                            )
-                          }
-                        >
-                          <Download className="h-4 w-4 mr-1.5" />
-                          Download
-                        </Button>
-                      </div>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1 min-w-[200px]">
+                    <div className="flex flex-col gap-1">
                       <span className="font-medium">{getJobTitle(app.jobId)}</span>
                       <span className="text-xs text-gray-400">{app.jobId}</span>
-                      {(app.roleCount || 1) > 1 && (
+                      {jobIdFilter === 'all' && (app.roleCount || 1) > 1 && (
                         <div className="mt-1 space-y-1">
                           <Badge variant="secondary" className="w-fit">
                             Applied to {app.roleCount} roles
@@ -929,74 +956,65 @@ export default function Applications() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {app.githubPortfolio || app.portfolioUrl || app.portfolioWorkSamples ? (
-                      <a
-                        href={app.githubPortfolio || app.portfolioUrl || app.portfolioWorkSamples}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline truncate block max-w-[160px]"
-                        title={app.githubPortfolio || app.portfolioUrl || app.portfolioWorkSamples}
-                      >
-                        Open
-                      </a>
+                    {app.resumeLink ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setResumePreview(app)}
+                        >
+                          <Eye className="h-4 w-4 mr-1.5" />
+                          View
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            downloadFile(
+                              getResumeDownloadUrl(app.resumeLink, API_CONFIG.ENDPOINTS.RESUME_PROXY),
+                              `resume-${app._id}.pdf`,
+                              app.resumeLink
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-1.5" />
+                          Download
+                        </Button>
+                      </div>
                     ) : (
                       '—'
                     )}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1 text-xs">
-                      <span className={app.assignmentSent ? 'text-emerald-700' : 'text-gray-400'}>
-                        Sent: {app.assignmentSent ? 'Yes' : 'No'}
-                      </span>
-                      <span className={app.assignmentReceived ? 'text-emerald-700' : 'text-gray-400'}>
-                        Received: {app.assignmentReceived ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1 text-xs">
-                      <span className={app.interviewLinkSent ? 'text-emerald-700' : 'text-gray-400'}>
-                        Link: {app.interviewLinkSent ? 'Sent' : 'No'}
-                      </span>
-                      <span>
-                        {app.interviewScheduledDate
-                          ? format(new Date(app.interviewScheduledDate), 'MMM d, yyyy h:mm a')
-                          : 'No date'}
-                      </span>
-                      <span>{formatStatusLabel(app.interviewStatus || 'not_scheduled')}</span>
-                      {app.interviewRecordingLink && (
-                        <a
-                          href={app.interviewRecordingLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Recording
-                        </a>
-                      )}
-                    </div>
-                  </TableCell>
                   <TableCell>{getStatusBadge(app.status)}</TableCell>
-                  <TableCell>
-                    <span className="line-clamp-2 text-xs text-gray-600 max-w-[160px]" title={app.adminRemarks || ''}>
-                      {app.adminRemarks?.trim() || '—'}
-                    </span>
+                  <TableCell className="text-sm text-gray-600">
+                    {format(new Date(isBin && app.deletedAt ? app.deletedAt : app.createdAt), 'MMM dd, yyyy')}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600">{format(new Date(app.createdAt), 'MMM dd, yyyy')}</TableCell>
-                  <TableCell>
-                    <Link
-                      to={`/applications/${app._id}?jobId=${encodeURIComponent(app.jobId)}`}
-                      state={{ ...listReturnState, jobId: app.jobId }}
-                    >
+                  <TableCell className="px-3">
+                    {isBin ? (
                       <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 hover:bg-[#03045E] hover:text-white hover:border-[#03045E] transition-colors"
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Restore ${app.fullName}'s application`}
+                        title="Restore application"
+                        onClick={() => restoreFromBin(app)}
+                        className="h-8 w-8 text-[#03045E] hover:bg-brand-accent"
                       >
-                        <Eye className="h-4 w-4" />
-                        <span className="hidden sm:inline">View</span>
+                        <RotateCcw className="h-4 w-4" />
                       </Button>
-                    </Link>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Move ${app.fullName}'s application to Bin`}
+                        title="Move to Bin"
+                        onClick={() => moveToBin(app)}
+                        className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

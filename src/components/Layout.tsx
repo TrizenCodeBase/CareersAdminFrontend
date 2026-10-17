@@ -2,7 +2,8 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, FileText, User, Mail, Upload, ChevronRight, Briefcase } from 'lucide-react';
+import { LogOut, LayoutDashboard, FileText, Mail, Upload, ChevronRight, Briefcase, Trash2 } from 'lucide-react';
+import trizenLogo from '../../assets/trizenlogo.png';
 
 interface LayoutProps {
   children: ReactNode;
@@ -44,7 +45,10 @@ export default function Layout({ children }: LayoutProps) {
   ) => {
     const isActive = exact
       ? location.pathname === to
-      : location.pathname === to || location.pathname.startsWith(to + '/');
+      : location.pathname === to || (
+        location.pathname.startsWith(to + '/') &&
+        !(to === '/applications' && location.pathname === '/applications/bin')
+      );
 
     return (
       <Link
@@ -84,12 +88,9 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Brand area — subtle gradient */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100 bg-gradient-to-br from-[#03045E] to-[#0077B6]">
-          <div className="h-8 w-8 rounded-lg bg-white ring-1 ring-white/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden p-1">
-            <img src="https://community.trizenventures.com/assets/trizen-mark-DU5BltTz.png" alt="Trizen Logo" className="h-full w-full object-contain" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white leading-tight">Trizen Careers</p>
-            <p className="text-[11px] text-blue-200 leading-tight mt-0.5">Admin Panel</p>
+          <div className="min-w-0">
+            <img src={trizenLogo} alt="Trizen" className="h-8 w-36 object-contain object-left" />
+            <p className="mt-1 text-[11px] leading-tight text-blue-200">Careers Admin Panel</p>
           </div>
         </div>
 
@@ -100,6 +101,7 @@ export default function Layout({ children }: LayoutProps) {
           </p>
           {navItem('/dashboard', 'Dashboard', <LayoutDashboard className="h-4 w-4" />)}
           {navItem('/applications', 'Applications', <FileText className="h-4 w-4" />, false)}
+          {navItem('/applications/bin', 'Bin', <Trash2 className="h-4 w-4" />)}
           {navItem('/jobs', 'Job Management', <Briefcase className="h-4 w-4" />)}
 
           <div className="my-3 border-t border-gray-100" />

@@ -17,9 +17,12 @@ export const API_CONFIG = {
   ENDPOINTS: {
     HEALTH: `${API_BASE_URL}/api/health`,
     APPLICATIONS: `${API_BASE_URL}/api/v1/applications`,
+    APPLICATIONS_BIN: `${API_BASE_URL}/api/v1/applications/bin`,
     APPLICATIONS_LOOKUP_EMAILS: `${API_BASE_URL}/api/v1/applications/lookup-emails`,
     RESUME_PROXY: `${API_BASE_URL}/api/v1/applications/resume`,
     applicationStatus: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/status`,
+    applicationTrash: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/trash`,
+    applicationRestore: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/restore`,
     applicationAdminNotes: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/admin-notes`,
     applicationById: (id: string, jobId?: string) =>
       `${API_BASE_URL}/api/v1/applications/${id}${jobId ? `?jobId=${encodeURIComponent(jobId)}` : ''}`,
@@ -46,4 +49,3 @@ export const API_CONFIG = {
 };
 
 export default API_CONFIG;
-

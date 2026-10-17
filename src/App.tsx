@@ -49,6 +49,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/applications/bin"
+        element={
+          <ProtectedRoute>
+            <Applications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/applications/:id"
         element={
           <ProtectedRoute>
@@ -97,4 +105,3 @@ function App() {
 }
 
 export default App;
-

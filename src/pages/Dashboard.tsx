@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '@/config/api';
 import { APPLICATION_STATUSES, formatStatusLabel } from '@/config/applicationStatus';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, CheckCircle, XCircle, Clock, Send, Mail, RotateCcw, ArrowRight } from 'lucide-react';
+import { FileText, Clock, Mail, RotateCcw, ArrowRight, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -11,6 +11,13 @@ interface Stats {
   totalApplications: number;
   recentApplications: number;
   statusBreakdown: Record<string, number>;
+  jobApplicationCounts: Record<string, number>;
+}
+
+interface ActiveJob {
+  id: string;
+  title: string;
+  category?: string;
 }
 
 /** Map each application status to a left-border Tailwind colour class */
@@ -103,6 +110,7 @@ export default function Dashboard() {
   const { token, isAuthenticated, isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -117,18 +125,29 @@ export default function Dashboard() {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_CONFIG.ENDPOINTS.APPLICATIONS}/stats/overview`, {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [statsResponse, jobsResponse] = await Promise.all([
+        fetch(`${API_CONFIG.ENDPOINTS.APPLICATIONS}/stats/overview`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
-      });
+        }),
+        fetch(`${API_CONFIG.ENDPOINTS.JOBS}?status=published&sort=title&order=asc`, { headers }),
+      ]);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch stats');
+      if (!statsResponse.ok || !jobsResponse.ok) {
+        throw new Error('Failed to fetch dashboard data');
       }
 
-      const data = await response.json();
-      setStats(data.data);
+      const [statsData, jobsData] = await Promise.all([
+        statsResponse.json(),
+        jobsResponse.json(),
+      ]);
+      if (!statsData.success || !statsData.data || !jobsData.success || !Array.isArray(jobsData.data)) {
+        throw new Error('The server returned invalid dashboard data');
+      }
+      setStats(statsData.data);
+      setActiveJobs(jobsData.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
@@ -158,6 +177,7 @@ export default function Dashboard() {
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderTop: 'border-t-blue-500',
+      description: 'Across all active applications',
     },
     {
       title: 'Recent (7 days)',
@@ -166,6 +186,7 @@ export default function Dashboard() {
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
       borderTop: 'border-t-yellow-500',
+      description: 'Received in the last 7 days',
     },
     {
       title: 'Pending',
@@ -174,38 +195,16 @@ export default function Dashboard() {
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderTop: 'border-t-orange-500',
+      description: 'Awaiting review',
     },
     {
-      title: 'Assignment Sent',
-      value: breakdown.assignment_sent || 0,
-      icon: Send,
-      color: 'text-sky-600',
-      bgColor: 'bg-sky-50',
-      borderTop: 'border-t-sky-500',
-    },
-    {
-      title: 'Shortlisted',
-      value: breakdown.shortlisted || 0,
-      icon: CheckCircle,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderTop: 'border-t-green-500',
-    },
-    {
-      title: 'Accepted',
-      value: breakdown.accepted || 0,
-      icon: CheckCircle,
+      title: 'Live jobs',
+      value: activeJobs.length,
+      icon: Briefcase,
       color: 'text-emerald-700',
       bgColor: 'bg-emerald-50',
       borderTop: 'border-t-emerald-600',
-    },
-    {
-      title: 'Rejected',
-      value: breakdown.rejected || 0,
-      icon: XCircle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderTop: 'border-t-red-500',
+      description: 'Accepting applications',
     },
   ];
 
@@ -231,7 +230,7 @@ export default function Dashboard() {
     : 'Welcome back!';
 
   return (
-    <div className="space-y-8 px-1">
+    <div className="space-y-6 px-1">
       {/* ── Page header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -270,15 +269,54 @@ export default function Dashboard() {
                 <div className="text-4xl font-extrabold text-gray-900 leading-none">
                   {stat.value}
                 </div>
-                <p className="text-xs text-gray-400 mt-1.5">vs last week</p>
+                <p className="text-xs text-gray-400 mt-1.5">{stat.description}</p>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* ── Divider ── */}
-      <hr className="border-gray-100" />
+      <Card className="overflow-hidden shadow-sm ring-1 ring-gray-100">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-gray-50 px-6 py-4">
+          <div>
+            <CardTitle className="text-base font-semibold text-gray-800">Live jobs</CardTitle>
+            <p className="mt-0.5 text-xs text-gray-500">Applications received for each active job</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/jobs')} className="gap-1.5">
+            Job management
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          {activeJobs.length === 0 ? (
+            <p className="px-6 py-8 text-center text-sm text-gray-500">There are no live jobs right now.</p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {activeJobs.map((job) => (
+                <button
+                  key={job.id}
+                  type="button"
+                  onClick={() => navigate(`/applications?jobId=${encodeURIComponent(job.id)}`)}
+                  className="flex w-full items-center justify-between gap-4 px-6 py-3.5 text-left transition-colors hover:bg-slate-50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-slate-800">{job.title}</span>
+                    <span className="mt-0.5 block truncate text-xs text-gray-500">
+                      {job.category || job.id}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-lg font-bold text-[#03045E]">
+                      {stats.jobApplicationCounts?.[job.id] || 0}
+                    </span>
+                    <span className="block text-[11px] text-gray-500">applications</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Status breakdown ── */}
       <Card className="shadow-sm ring-1 ring-gray-100">
