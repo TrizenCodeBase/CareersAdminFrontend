@@ -824,7 +824,15 @@ export default function Applications() {
               applications.map((app, index) => (
                 <TableRow
                   key={app._id}
-                  className={`transition-colors hover:bg-[#DAF5FB]/20 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement | null;
+                    if (target?.closest('a, button, input, textarea, select, [role="button"]')) {
+                      return;
+                    }
+                    navigate(`/applications/${app._id}`, { state: listReturnState });
+                  }}
+                  className={`cursor-pointer transition-colors hover:bg-[#DAF5FB]/30 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                  title="Click to view details"
                 >
                   {/* Name with avatar */}
                   <TableCell className="font-medium">
