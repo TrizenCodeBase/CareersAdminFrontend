@@ -910,8 +910,8 @@ export default function Applications() {
                               .map((role) => (
                                 <Link
                                   key={role._id}
-                                  to={`/applications/${role._id}`}
-                                  state={listReturnState}
+                                  to={`/applications/${role._id}?jobId=${encodeURIComponent(role.jobId)}`}
+                                  state={{ ...listReturnState, jobId: role.jobId }}
                                   className="text-xs text-blue-600 hover:underline"
                                 >
                                   {isSameRoleFamily(role.jobId, app.jobId) ? '↻ ' : '+ '}

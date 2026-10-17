@@ -206,6 +206,7 @@ export default function ApplicationDetail() {
   const [relatedStatusDrafts, setRelatedStatusDrafts] = useState<Record<string, string>>({});
   const [savingRelatedId, setSavingRelatedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [adminRemarks, setAdminRemarks] = useState('');
@@ -228,26 +229,44 @@ export default function ApplicationDetail() {
     }
 
     fetchApplication();
-  }, [id, isAuthenticated, isAdmin, navigate]);
+  }, [id, location.search, location.state, isAuthenticated, isAdmin, navigate]);
 
   const fetchApplication = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const searchJobId = new URLSearchParams(location.search).get('jobId');
       const stateJobId = (location.state as { jobId?: string } | null)?.jobId;
       const targetJobId = searchJobId || stateJobId || undefined;
 
-      const response = await fetch(API_CONFIG.ENDPOINTS.applicationById(id!, targetJobId), {
+      let response = await fetch(API_CONFIG.ENDPOINTS.applicationById(id!, targetJobId), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      if (response.status === 404 && targetJobId) {
+        response = await fetch(API_CONFIG.ENDPOINTS.applicationById(id!), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+
+      if (response.status === 404) {
+        setApplication(null);
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to fetch application');
+        throw new Error(`Unable to load application (HTTP ${response.status}).`);
       }
 
       const data = await response.json();
+      if (!data.success || !data.data) {
+        throw new Error(data.error || 'The server returned an invalid application response.');
+      }
+
       setApplication(data.data);
       setStatus(data.data.status);
       setAdminRemarks(data.data.adminRemarks || '');
@@ -273,6 +292,8 @@ export default function ApplicationDetail() {
       setRelatedStatusDrafts(Object.fromEntries(related.map((app) => [app._id, app.status])));
     } catch (error) {
       console.error('Error fetching application:', error);
+      setApplication(null);
+      setFetchError(error instanceof Error ? error.message : 'Unable to load application.');
     } finally {
       setLoading(false);
     }
@@ -429,13 +450,24 @@ export default function ApplicationDetail() {
           <FileText className="h-6 w-6 text-red-400" />
         </div>
         <div className="text-center">
-          <p className="text-base font-semibold text-gray-900">Application not found</p>
-          <p className="mt-1 text-sm text-slate-500">This record may have been removed or the link is invalid.</p>
+          <p className="text-base font-semibold text-gray-900">
+            {fetchError ? 'Unable to load application' : 'Application not found'}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            {fetchError || 'This record may have been removed or the link is invalid.'}
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => navigate(backToApplications)}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to applications
-        </Button>
+        <div className="flex items-center gap-2">
+          {fetchError && (
+            <Button variant="outline" size="sm" onClick={fetchApplication}>
+              Retry
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => navigate(backToApplications)}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to applications
+          </Button>
+        </div>
       </div>
     );
   }
@@ -606,8 +638,8 @@ export default function ApplicationDetail() {
                 <li key={app._id} className="flex items-center gap-1.5">
                   <ChevronRight className="h-3.5 w-3.5 opacity-50 shrink-0" />
                   <Link
-                    to={`/applications/${app._id}`}
-                    state={location.state}
+                    to={`/applications/${app._id}?jobId=${encodeURIComponent(app.jobId)}`}
+                    state={{ ...(location.state || {}), jobId: app.jobId }}
                     className="font-medium underline-offset-2 hover:underline"
                   >
                     {getJobTitle(app.jobId)}
@@ -696,7 +728,10 @@ export default function ApplicationDetail() {
                       {savingRelatedId === app._id ? 'Saving…' : 'Update'}
                     </Button>
                     {!isCurrent && (
-                      <Link to={`/applications/${app._id}`} state={location.state}>
+                      <Link
+                        to={`/applications/${app._id}?jobId=${encodeURIComponent(app.jobId)}`}
+                        state={{ ...(location.state || {}), jobId: app.jobId }}
+                      >
                         <Button size="sm" variant="ghost" className="gap-1">
                           <Eye className="h-4 w-4" />
                           Open
