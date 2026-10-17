@@ -233,7 +233,11 @@ export default function ApplicationDetail() {
   const fetchApplication = async () => {
     setLoading(true);
     try {
-      const response = await fetch(API_CONFIG.ENDPOINTS.applicationById(id!), {
+      const searchJobId = new URLSearchParams(location.search).get('jobId');
+      const stateJobId = (location.state as { jobId?: string } | null)?.jobId;
+      const targetJobId = searchJobId || stateJobId || undefined;
+
+      const response = await fetch(API_CONFIG.ENDPOINTS.applicationById(id!, targetJobId), {
         headers: {
           Authorization: `Bearer ${token}`,
         },

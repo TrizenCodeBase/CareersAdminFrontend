@@ -21,7 +21,8 @@ export const API_CONFIG = {
     RESUME_PROXY: `${API_BASE_URL}/api/v1/applications/resume`,
     applicationStatus: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/status`,
     applicationAdminNotes: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}/admin-notes`,
-    applicationById: (id: string) => `${API_BASE_URL}/api/v1/applications/${id}`,
+    applicationById: (id: string, jobId?: string) =>
+      `${API_BASE_URL}/api/v1/applications/${id}${jobId ? `?jobId=${encodeURIComponent(jobId)}` : ''}`,
     JOBS: `${API_BASE_URL}/api/v1/jobs`,
     jobById: (id: string) => `${API_BASE_URL}/api/v1/jobs/${id}`,
     jobStatus: (id: string) => `${API_BASE_URL}/api/v1/jobs/${id}/status`,

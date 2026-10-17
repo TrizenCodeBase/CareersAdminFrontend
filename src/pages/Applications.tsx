@@ -829,7 +829,9 @@ export default function Applications() {
                     if (target?.closest('a, button, input, textarea, select, [role="button"]')) {
                       return;
                     }
-                    navigate(`/applications/${app._id}`, { state: listReturnState });
+                    navigate(`/applications/${app._id}?jobId=${encodeURIComponent(app.jobId)}`, {
+                      state: { ...listReturnState, jobId: app.jobId }
+                    });
                   }}
                   className={`cursor-pointer transition-colors hover:bg-[#DAF5FB]/30 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
                   title="Click to view details"
@@ -982,7 +984,10 @@ export default function Applications() {
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">{format(new Date(app.createdAt), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>
-                    <Link to={`/applications/${app._id}`} state={listReturnState}>
+                    <Link
+                      to={`/applications/${app._id}?jobId=${encodeURIComponent(app.jobId)}`}
+                      state={{ ...listReturnState, jobId: app.jobId }}
+                    >
                       <Button
                         variant="outline"
                         size="sm"

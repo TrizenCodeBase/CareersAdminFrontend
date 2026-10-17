@@ -82,7 +82,7 @@ export async function downloadFile(
 
   const tryFetch = async (target: string) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
+    const timer = setTimeout(() => controller.abort(), 5000);
     try {
       const res = await fetch(target, { mode: 'cors', signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

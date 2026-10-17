@@ -40,15 +40,21 @@ export function ResumePreviewDialog({
 
       for (const target of candidates) {
         try {
-          const res = await fetch(target, { mode: 'cors' });
-          if (!res.ok) continue;
-          const blob = await res.blob();
-          if (cancelled) return;
-          createdUrl = URL.createObjectURL(blob);
-          setObjectUrl(createdUrl);
-          setFileType(blob.type);
-          setLoading(false);
-          return;
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 5000);
+          try {
+            const res = await fetch(target, { mode: 'cors', signal: controller.signal });
+            if (!res.ok) continue;
+            const blob = await res.blob();
+            if (cancelled) return;
+            createdUrl = URL.createObjectURL(blob);
+            setObjectUrl(createdUrl);
+            setFileType(blob.type);
+            setLoading(false);
+            return;
+          } finally {
+            clearTimeout(timer);
+          }
         } catch {
           // try the next source
         }
