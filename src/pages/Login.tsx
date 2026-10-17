@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_CONFIG } from '@/config/api';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +42,13 @@ export default function Login() {
       }
 
       login(data.data.token, data.data.user);
-      navigate('/dashboard');
+      const returnTo = (location.state as { from?: unknown } | null)?.from;
+      navigate(
+        typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')
+          ? returnTo
+          : '/dashboard',
+        { replace: true }
+      );
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
     } finally {

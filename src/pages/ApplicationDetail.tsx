@@ -194,7 +194,7 @@ function Section({
 
 export default function ApplicationDetail() {
   const { id } = useParams<{ id: string }>();
-  const { token, isAuthenticated, isAdmin } = useAuth();
+  const { token, isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const backToApplications = (location.state as { fromList?: string } | null)?.fromList
@@ -224,12 +224,15 @@ export default function ApplicationDetail() {
 
   useEffect(() => {
     if (!isAuthenticated || !isAdmin) {
-      navigate('/login');
+      navigate('/login', {
+        replace: true,
+        state: { from: `${location.pathname}${location.search}` },
+      });
       return;
     }
 
     fetchApplication();
-  }, [id, location.search, location.state, isAuthenticated, isAdmin, navigate]);
+  }, [id, location.pathname, location.search, location.state, isAuthenticated, isAdmin, navigate]);
 
   const fetchApplication = async () => {
     setLoading(true);
@@ -259,6 +262,14 @@ export default function ApplicationDetail() {
       }
 
       if (!response.ok) {
+        if (response.status === 401) {
+          logout();
+          navigate('/login', {
+            replace: true,
+            state: { from: `${location.pathname}${location.search}` },
+          });
+          return;
+        }
         throw new Error(`Unable to load application (HTTP ${response.status}).`);
       }
 
